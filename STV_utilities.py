@@ -31,11 +31,11 @@ def SetSafeFit(frame, Fits, SafeFitName):
     return    
 
 def GetCorridorTrackNames(Tracks):
-    inputs = open('CorridorTracks.pkl', 'rb')
+    inputs = open('Corridors.pkl', 'rb')
     data = pickle.load(inputs)
-    for i in range(0,len(data)):
-        Tracks.append(data[i][0])
-     
+    for cor in data:
+        for trk in data[cor][1]:
+            Tracks.append(trk[0])
     return Tracks
 
 def GetBestFineFitsNames():
@@ -56,7 +56,8 @@ def GetBestCoarseFitsNames():
 
     
 def GetCoarseTrackNames():
-    tracknames=["LineFit_DC","SPEFit2","MPEFit"]
+#    tracknames=["LineFit_DC","SPEFit2","MPEFit"]
+    tracknames=[]
     ic_om = range(1,61)
     ic_st = range(1,79)
     ic_om_names = ['VetoFit_{0:02d}{1:02d}'.format(st,om) for om in ic_om for st in ic_st]
@@ -107,6 +108,16 @@ def CleanSTV(frame, Pulses, FitNames, CleanAll=False ):
                     del frame[k]
             else:
                 if ("{0}_{1}".format(Pulses,fitname) in k):
+                    del frame[k]
+
+def CleanTH(frame, Pulses, FitNames, CleanAll=False ):
+    for fitname in FitNames:
+        for k in frame.keys():
+            if CleanAll == False:
+                if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k) and not ("coincObsPsList" in k) :
+                    del frame[k]
+            else:
+                if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k):
                     del frame[k]
 
 def CleanSegments(frame, FitNames, N):

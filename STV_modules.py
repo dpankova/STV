@@ -1,6 +1,6 @@
 import numpy
 import pickle
-from icecube import phys_services,linefit,gulliver,gulliver_modules,spline_reco,StartingTrackVeto
+from icecube import phys_services, linefit, gulliver, gulliver_modules, spline_reco, StartingTrackVeto, TrackHits
 from I3Tray import I3Units
 from icecube import dataclasses, icetray
 from icecube import dataio, phys_services
@@ -28,7 +28,11 @@ def DoGetLLH(tray, name, FitNames):
                         FitName=fitname)
     
     
-def DoSplineReco(tray,name,Pulses,Seed,Llh,LogName,Spline,AngStep,DistStep,If=lambda frame: True):
+def DoSplineReco(tray,name,
+                 Pulses,Seed,
+                 Llh,LogName,
+                 Spline,AngStep,DistStep,
+                 If=lambda frame: True):
     # setup minuit, parametrization, and bayesian priors for general use                            
     tray.AddService("I3GulliverMinuitFactory", "Minuit%s" % (Llh) + LogName,
                     Algorithm="SIMPLEX",
@@ -89,7 +93,8 @@ def NSegmentVector(frame,FitName,N=1):
         return True
 
     #shift to closest approach to 0,0,0    
-    origin_cap=phys_services.I3Calculator.closest_approach_position(basep,dataclasses.I3Position(0,0,0))
+    origin_cap = phys_services.I3Calculator.closest_approach_position(
+        basep,dataclasses.I3Position(0,0,0))
     
     basep_shift_d=numpy.sign(origin_cap.z - basep.pos.z) *\
                   numpy.sign(basep.dir.z) *\
@@ -117,7 +122,7 @@ def NSegmentVector(frame,FitName,N=1):
 
     RemoveFromFrame(frame,[FitName+"_"+str(N)+"_segments"])
     frame[FitName+"_"+str(N)+"_segments"]=dataclasses.I3VectorI3Particle(segments)
-#    print "Put", FitName+"_"+str(N)+"_segments", "in the frame"                                 
+#    print "Put", FitName+"_"+str(N)+"_segments", "in the frame"                             
     del segments
 
 def PrintPm(frame, FitNames):
@@ -154,6 +159,41 @@ def DoSTV(tray, name, Pulses, FitNames, NSeg, PmCut, Spline, MinCADist, DistType
                  Norm = False,
                  Min_CAD_Dist=MinCADist)
 
+def PrintCoincQP(frame, Pulses, FitName, NSeg):
+    ps = 0
+    qs = 0
+    name_p = "TrackHits_"+FitName+"_"+Pulses+"_"+"coincObsPsList_"+str(NSeg)
+    name_q = "TrackHits_"+FitName+"_"+Pulses+"_"+"coincObsQsList_"+str(NSeg)
+    if frame.Has(name_p):
+        for k in frame.keys():
+            if (name_p in k):
+                ps = sum(frame[k])
+            if (name_q in k):
+                qs = sum(frame[k])    
+        print "{0} Qs = {1:.3e} Ps = {2:.3e}".format(FitName, qs, ps)
+
+
+def DoTrackHits(tray, name, Pulses, FitNames, NSeg, Percent, Spline, MinCADist):
+    for fitname in FitNames:
+        #Create vectors for STV  
+#        print "NSegmentVectorTH_",fitname,str(NSeg)
+        tray.Add(NSegmentVector,"NSegmentVectorTH_"+fitname+"_"+str(NSeg),
+                 FitName=fitname,
+                 N=NSeg)        
+        #STV                                                                                
+        tray.Add("TrackHits","TH_"+fitname+"_"+str(NSeg),
+                 Pulses=Pulses,
+                 Photonics_Service=Spline,
+                 Percent=Percent,
+                 Fit=fitname,
+                 Particle_Segments=fitname+"_"+str(NSeg)+"_segments",
+                 Min_CAD_Dist=MinCADist)
+        
+        # tray.Add(PrintCoincQP,"THPrint_"+fitname+"_"+str(NSeg),
+        #          Pulses = Pulses,
+        #          FitName=fitname,
+        #          NSeg = NSeg)
+      
 
 def MakeVetoFits(frame, CoGFit, SafeFit, PulsesVeto):
     geo = frame["I3Geometry"].omgeo
@@ -179,6 +219,7 @@ def MakeVetoFits(frame, CoGFit, SafeFit, PulsesVeto):
                 for om in veto_hits:
                     newfit = copy.deepcopy(frame[SafeFit])                                           
                     newfit.pos=frame["CoGPos"]
+                    newfit.time=frame["CoGTime"].value
                     newfit.dir=dataclasses.I3Direction(newfit.pos-geo[om[0]].position)
                     name = 'VetoFit_{0:02d}{1:02d}'.format(om[0].string,om[0].om)
                     frame[name]=newfit
@@ -187,52 +228,88 @@ def MakeVetoFits(frame, CoGFit, SafeFit, PulsesVeto):
 #    print "Can't make VetoFits"
     return False
 
+def Intersection(cog, mid, p1, p2):
+
+    tr = mid-cog
+    cor = p2-p1
+    denom = tr.x*cor.y-cor.x*tr.y
+    
+    #never colliner or parallel
+    #if denom == 0 : return None # collinear
+
+    denom_is_positive = denom > 0
+    top = cog-p1
+    s_numer = tr.x*top.y-tr.y*top.x
+
+    if (s_numer < 0) == denom_is_positive:
+        return False # no collision
+
+    t_numer = cor.x*top.y-cor.y*top.x
+
+    if (t_numer < 0) == denom_is_positive:
+        return False # no collision
+
+    if (s_numer > denom) == denom_is_positive or (t_numer > denom) == denom_is_positive:
+        return False # no collision
+
+    # collision detected
+    t = t_numer/denom
+
+    intsec = dataclasses.I3Position(cog.x+(t*tr.x), cog.y+(t*tr.y),0)
+    d1 = (intsec-p1).magnitude
+    d2 = (intsec-p2).magnitude
+    
+    if (d1 < 30) or (d2 < 30):
+        return False
+    return True
+
+
 def MakeCorridorFits(frame, CoGFit, SafeFit):
-    input_file = open('CorridorTracks.pkl', 'rb')
+    input_file = open('Corridors.pkl', 'rb')
     data = pickle.load(input_file)
-    if len(data) != 0:
-        
-        if frame.Has(CoGFit):
-            fit = copy.deepcopy(frame[CoGFit])                                                
-            if fit.fit_status == dataclasses.I3Particle.OK:  
-                for i in data:
-                    newfit = copy.deepcopy(frame[CoGFit])                                             
-                    newfit.dir=dataclasses.I3Direction(newfit.pos-dataclasses.I3Position(i[1]))
-                    name = i[0]
-                    frame[name]=newfit
-                return True
+    if len(data) == 0:
+        print "Can't make CorridorFits"
+        return False
 
-        if frame.Has("CoGTime") and frame.Has(SafeFit):
-            fit = copy.deepcopy(frame[SafeFit])                                                
-            if fit.fit_status == dataclasses.I3Particle.OK:
-                for i in data:
-                    newfit = copy.deepcopy(frame[SafeFit])                                            
-                    newfit.dir=dataclasses.I3Direction(newfit.pos-dataclasses.I3Position(i[1]))
-                    name = i[0]
-                    frame[name]=newfit
-                return True
+    #find CoG
+    fit = 0
+    if frame.Has(CoGFit):
+        fit = copy.deepcopy(frame[CoGFit])                                              
+        if fit.fit_status != dataclasses.I3Particle.OK:
+            fit = copy.deepcopy(frame[SafeFit])                                              
+            fit.pos = frame["CoGPos"]
+            fit.time = frame["CoGTime"].value
 
-    print "Can't make CorridorFits"
-    return False
-
+    #make tracks        
+    for cor in data:
+        use_cor = Intersection(fit.pos, data[cor][0][0], 
+                               data[cor][0][1], data[cor][0][2]) 
+        if use_cor == True:
+            for trk in data[cor][1]:
+                newfit = copy.deepcopy(fit)                                  
+                newfit.dir = dataclasses.I3Direction(
+                    newfit.pos - trk[1])
+                frame[trk[0]]=newfit
+    return True
+            
     
-def CascadeDir(frame, CoGFit, SRTPulsesFid):                                                   
+def CascadeDir(frame, CoGFit, SRTPulsesFid):                                                
     
-    geo = frame["I3Geometry"].omgeo                                                             
+    geo = frame["I3Geometry"].omgeo                                                
     if frame.Has(SRTPulsesFid) and frame.Has(CoGFit):
         fit=copy.deepcopy(dataclasses.I3Particle(frame[CoGFit]))
         if not fit.fit_status == dataclasses.I3Particle.OK:  
             return
-        pulsesf = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,SRTPulsesFid)               
-        if  len(pulsesf) == 0:                                                                      
-            return                                                                                  
-        max_time = 0                                                                                
-        max_dist = 0                                                                               
+        pulsesf = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,SRTPulsesFid)         
+        if  len(pulsesf) == 0:                                                            
+            return                                                                         
+        max_time = 0                                                                 
+        max_dist = 0                                                               
         max_dist_om = 0
         max_time_om = 0
 
-        for om, pulseSeries in pulsesf:                                                             
-            for pulse in pulseSeries:                                                               
+        for om, pulseSeries in pulsesf:                                                   
+            for pulse in pulseSeries:                                                      
                 dist = (fit.pos-geo[om].position).magnitude                               
                 time = pulse.time - fit.time
                 if dist > max_dist:
