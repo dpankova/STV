@@ -114,7 +114,9 @@ def CleanTH(frame, Pulses, FitNames, CleanAll=False ):
     for fitname in FitNames:
         for k in frame.keys():
             if CleanAll == False:
-                if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k) and not ("coincObsPsList" in k) :
+                if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k)\
+                        and not ("coincObsPsList" in k) and not ("coincObsQsList" in k)\
+                        and not ("coincObsProbsList" in k) :
                     del frame[k]
             else:
                 if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k):
