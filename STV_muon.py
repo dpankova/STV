@@ -10,7 +10,7 @@ from I3Tray import *
 from weighting import weighter
 import STV_utilities as Utils
 import STV_modules as Mods
-import STV_cuts as Cuts
+import STV_cuts_muon as Cuts
 print uname()
 
 dlist = DOMS.DOMS("IC86EDC")
@@ -208,10 +208,10 @@ def GetPmiss(frame, FitName):
     return
 
 def Weight(frame):
-    weight_calc = weighter(mctype = 'genie', nfiles = 2) # or mctype='corsika'
+    weight_calc = weighter(mctype = 'corsika', nfiles = [100], runs = [11808]) # or mctype='corsika'
     w = weight_calc(frame)
-    frame["Weight"] = dataclasses.I3Double(w[0])
-    print "weight = ", w[0]
+    frame["Weight"] = dataclasses.I3Double(w)
+    print "weight = ", w
     return
 
 ################################START################################################          
