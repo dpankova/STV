@@ -5,7 +5,7 @@
 #PBS -l walltime=8:00:00
 #PBS -j oe
 #PBS -o /storage/home/dup193/work/estes/output/test.log
-#PBS -N nue
+#PBS -N nutau
 #PBS -m n
 
 start=`date +%s`
@@ -69,10 +69,10 @@ export -f i3_run
 
 
 
-#outdir=/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nue/
-#outdir=/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/numu/
-outdir=/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nutau/
-#outdir=/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/corsika/
+#outdir=/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/
+#outdir=/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/
+outdir=/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/
+#outdir=/gpfs/group/dfc13/default/dasha/mlarson/output_1/corsika/
 
 if [ ! -d "$DIRECTORY" ]; then
     mkdir -p ${outdir}
@@ -95,13 +95,13 @@ num_skip=$(($subpart*$num_events + $num_done))
 #num_skip=`expr $subpart \* $num_events \+ $num_done`
 echo 'skip: '$num_skip
 
-#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/nue/genie_ic.12640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nue/Pm_genie_ic.12640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
+#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/nue/genie_ic.12640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/Pm_genie_ic.12640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
 
-#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/numu/genie_ic.14640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/pm_trial/numu/Pm_genie_ic.14640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
+#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/numu/genie_ic.14640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/Pm_genie_ic.14640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
 
-i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/nutau/genie_ic.16640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nutau/Pm_genie_ic.16640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
+i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/GeoCalibDetectorStatus_2013.56429_V1_Modified.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/nutau/genie_ic.16640.$run_pad.i3.gz -o /gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/Pm_genie_ic.16640.$run_pad.part$subpart --sk $num_skip --ne $num_events 
 
-#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/corsika/GeoCalibDetectorStatus_2012.56063_V1.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/corsika/Level2_IC86.2012_corsika.011808.$run_pad.i3.bz2  -o /gpfs/group/dfc13/default/dasha/mlarson/pm_trial/corsika/Pm_corsika_011808.$run_pad.part$subpart --sk $num_skip --ne $num_events 
+#i3_run py2-v2 "$ENV_SHELL" 'python' "$SCRIPT" -i /gpfs/group/dfc13/default/dasha/mlarson/L2/corsika/GeoCalibDetectorStatus_2012.56063_V1.i3.gz /gpfs/group/dfc13/default/dasha/mlarson/L2/corsika_all/Level2_IC86.2012_corsika.011808.$run_pad.i3.bz2  -o /gpfs/group/dfc13/default/dasha/mlarson/output_1/corsika/Pm_corsika_011808.$run_pad.part$subpart --sk $num_skip --ne $num_events 
 
 end=`date +%s`
 runtime=$((end-start))

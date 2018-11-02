@@ -128,11 +128,13 @@ def Values(frame, year,  PmNames0, PmNames1):
         arr.append(np.array(frame["VT_P"]))
         arr.append(np.array(frame["VT_H"]))
         arr.append(np.array(frame["VT_Tot"]))
+        arr.append(np.array(frame["VT_PC"]))
         arr.append(np.array(frame["CT_Q"]))
         arr.append(np.array(frame["CT_WQ"]))
         arr.append(np.array(frame["CT_P"]))
         arr.append(np.array(frame["CT_H"]))
         arr.append(np.array(frame["CT_Tot"]))
+        arr.append(np.array(frame["CT_PC"]))
         
         values.append(arr)
         if len(values)%100 == 0:
@@ -329,7 +331,7 @@ print count
 import pickle
 TestCuts("genie", file_list = file_list_c, year = "12")
 values_c = values[:]
-name_f = "Corsika_TH_prim.pkl"
+name_f = "Corsika_TH_Prim.pkl"
 #name_f = "Genie_TH_numu_{0}_{1}.pkl".format(p1,p2)
 #np.save(name_f,values_n)
 output = open(name_f,"wb")
