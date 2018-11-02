@@ -55,24 +55,47 @@ def GetBestCoarseFitsNames():
     return Tracks
 
     
-def GetCoarseTrackNames():
+# def GetTrackNames():
+# #    tracknames=["LineFit_DC","SPEFit2","MPEFit"]
+#     tracknames=[]
+#     ic_om = range(1,61)
+#     ic_st = range(1,79)
+#     ic_om_names = ['VetoFit_{0:02d}{1:02d}'.format(st,om) for om in ic_om for st in ic_st]
+#     dc_st = [26,27,35,36,37,45,46]
+#     dc_om = range(38,61)
+#     dc_om_names = ['VetoFit_{0:02d}{1:02d}'.format(st,om) for om in dc_om for st in dc_st]
+#     set_dc = set(dc_om_names)
+#     for i in ic_om_names:
+#         if i not in set_dc:
+#             tracknames.append(i)
+
+#     return tracknames
+
+def GetTrackNames():
 #    tracknames=["LineFit_DC","SPEFit2","MPEFit"]
     tracknames=[]
-    ic_om = range(1,61)
-    ic_st = range(1,79)
-    ic_om_names = ['VetoFit_{0:02d}{1:02d}'.format(st,om) for om in ic_om for st in ic_st]
-    dc_st = [26,27,35,36,37,45,46]
-    dc_om = range(38,61)
-    dc_om_names = ['VetoFit_{0:02d}{1:02d}'.format(st,om) for om in dc_om for st in dc_st]
-    set_dc = set(dc_om_names)
-    for i in ic_om_names:
-        if i not in set_dc:
-            tracknames.append(i)
-
-    tracknames.append('FarthestDistFit')
-    tracknames.append('LatestTimeFit')
+    lim = 70
+    for i in range(0,lim):
+        name = 'VetoFit_{0:05d}'.format(i)
+        tracknames.append(name)
 
     return tracknames
+
+# def GetPulsesNames():
+# #    tracknames=["LineFit_DC","SPEFit2","MPEFit"]
+#     tracknames=[]
+#     ic_om = range(1,61)
+#     ic_st = range(1,79)
+#     ic_om_names = ['VetoFit_{0:02d}{1:02d}_Pulses'.format(st,om) for om in ic_om for st in ic_st]
+#     dc_st = [26,27,35,36,37,45,46]
+#     dc_om = range(38,61)
+#     dc_om_names = ['VetoFit_{0:02d}{1:02d}_Pulses'.format(st,om) for om in dc_om for st in dc_st]
+#     set_dc = set(dc_om_names)
+#     for i in ic_om_names:
+#         if i not in set_dc:
+#             tracknames.append(i)
+
+#     return tracknames
 
 def GetFineTrackNames(NPositionsFid, NPositionsVeto):
     tracknames = []
@@ -102,13 +125,14 @@ def CleanTracks(frame, FitNames):
 
 def CleanSTV(frame, Pulses, FitNames, CleanAll=False ):
     for fitname in FitNames:
-        for k in frame.keys():
-            if CleanAll == False:
-                if ("{0}_{1}".format(Pulses,fitname) in k) and not ("prob_obs_0s" in k) :
-                    del frame[k]
-            else:
-                if ("{0}_{1}".format(Pulses,fitname) in k):
-                    del frame[k]
+        if frame.Has(fitname): 
+            for k in frame.keys():
+                if CleanAll == False:
+                    if ("{0}_{1}".format(Pulses,fitname) in k) and not ("prob_obs_0s" in k) :
+                        del frame[k]
+                else:
+                    if ("{0}_{1}".format(Pulses,fitname) in k):
+                        del frame[k]
 
 def CleanTH(frame, Pulses, FitNames, CleanAll=False ):
     for fitname in FitNames:
@@ -118,6 +142,18 @@ def CleanTH(frame, Pulses, FitNames, CleanAll=False ):
                         and not ("coincObsPsList" in k) and not ("coincObsQsList" in k)\
                         and not ("coincObsProbsList" in k) :
                     del frame[k]
+
+                elif ("TrackHits_{0}_{1}".format(fitname,Pulses) in k):   
+                    lists = frame[k]
+                   # print lists
+                    nz_OMs = []
+                        
+                    for om, val in lists: #Find non zero hits
+                        if val:
+                             nz_OMs.append(om)
+
+                    if not nz_OMs: #Didn't find any non-zero hits
+                        del frame[k]
             else:
                 if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k):
                     del frame[k]
@@ -146,8 +182,10 @@ def CleanFitParams(frame, FitNames):
 def CleanReco(frame, Llh, FitNames, AngStep, DistStep, CleanAll = False):
     for fitname in FitNames:
         for k in frame.keys():
+#            print fitname
             if ("Spline{0}_{1}_{2!s}_{3!s}{4}".format(Llh,fitname,AngStep,DistStep,"FitParams") in k):
                 fit_params = frame[k]    
+ #               print fit_params
                 if CleanAll == False:
                     if numpy.isnan(fit_params.rlogl):
                         del frame[k]
@@ -155,22 +193,44 @@ def CleanReco(frame, Llh, FitNames, AngStep, DistStep, CleanAll = False):
                 else:
                         del frame[k]
                         del frame[k[:-len("FitParams")]]
-                        
-def PrintPm(frame, FitNames):
-    pm = 0
-    rlogl = 0
+
+def CleanEval(frame, Llh, FitNames, AngStep, DistStep, CleanAll = False):
     for fitname in FitNames:
-        pm = 0
-        rlogl = 0  
+        for k in frame.keys():
+            #            print fitname
+            if ("LLHCalc{0}_Spline{0}_{1}_{2!s}_{3!s}".format(Llh,fitname,AngStep,DistStep) in k):
+                fit_params = frame[k]    
+#                print fit_params
+                if CleanAll == False:
+                    if numpy.isnan(fit_params.rlogl):
+                        del frame[k]
+                else:
+                    del frame[k]
+                    
+                        
+def PrintLLH(frame, FitNames):
+    for fitname in FitNames:
         if frame.Has(fitname):
+            logl = 0  
             pm = 0
-            rlogl = 0  
+            ps = 0
             for k in frame.keys():
+               # if ("prob_obs_0s" in k) and (fitname in k):
+                #    pm = frame[k].value
+                if ("LLHCalcMPE" in k) and (fitname in k):
+                    logl = frame[k].logl
                 if ("prob_obs_0s" in k) and (fitname in k):
                     pm = frame[k].value
-                if ("FitParams" in k) and (fitname in k):
-                    rlogl = frame[k].rlogl
-            print "{0} Rlogl = {1:.3e} Pm = {2:.3e}".format(fitname, rlogl, pm)
+                if ("coincObsQsList" in k) and (fitname in k):
+                    Ps = frame[k]
+                    for om, value in Ps:
+                        if value:
+                            ps = ps + 1
+
+            if pm == 0:        
+                print "{0} LLH = {1:.3e}".format(fitname, logl)
+            else:
+                print "{0} LLH = {1:.3e} Pm = {2:.3e} Pulses = {3:f}".format(fitname, logl, pm, ps)
 #            print "Getting out", fitname, frame[fitname]
 
 def GetPhotonicsService(service_type="inf_muon"):

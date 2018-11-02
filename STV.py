@@ -1,4 +1,4 @@
-#!/usr/bin/env python                                                                                
+#bk#!/usr/bin/env python                                                                                
 from os import uname
 import argparse,os
 import numpy 
@@ -7,15 +7,17 @@ from icecube import gulliver, gulliver_modules, spline_reco, StartingTrackVeto
 from icecube.DeepCore_Filter import DOMS
 from I3Tray import I3Units
 from I3Tray import *
-from weighting import weighter
+#from weighting import weighter
 import STV_utilities as Utils
 import STV_modules as Mods
 import STV_cuts as Cuts
 print uname()
 
-dlist = DOMS.DOMS("IC86EDC")
+dlist = DOMS.DOMS("IC86")
 parser = argparse.ArgumentParser()
 
+icetray.I3Logger.global_logger = icetray.I3PrintfLogger()
+icetray.logging.console()
 parser.add_argument("-i","--infiles",
                     dest="infiles",
                     type=str,
@@ -74,7 +76,10 @@ parser.add_argument('-id','--evt_id',
                     dest='event_id', 
                     type=int,
                     default=-1, 
-                    help='Only run this on the event with the specified event id; if not specified, default is -1, run on all input events')
+                    help='Only run this on the event \
+                    with the specified event id; \
+                    if not specified, default is -1, \
+                    run on all input events')
 
 parser.add_argument('--ne', '--n_events', 
                     dest='n_events', 
@@ -120,8 +125,8 @@ safe_fit ="SafeFit"
 log_name_f = "_Free_{0}_{1}".format(d_step_f,ang_step_f) 
 free_fit_name = "Spline{0}_{1}{2}".format(llh,seed_fit,log_name_f)  
 safe_fit_name = "Spline{0}_{1}{2}".format(llh,safe_fit,log_name_f)  
-print "Free fit name = ", free_fit_name
-print "Safe fit name = ", safe_fit_name
+#print "Free fit name = ", free_fit_name
+#print "Safe fit name = ", safe_fit_name
 
 ###Primary##
 prim = "Primary"
@@ -137,39 +142,22 @@ min_cad_dist = 150
 
 ###VetoFitRecoParameters
 #Reconstruction for each veto hit
-d_step_vf = 0
-ang_step_vf = 0
+d_step_vf = 1
+ang_step_vf = 1
 log_name_vf ="_{0}_{1}".format(d_step_vf,ang_step_vf) 
-
-###MPEFits for vertex study 
-d_step_v = 1
-ang_step_v = 1
-vertex_seed = "MPEFit"
-log_name_v = "_Vertex_{0}_{1}".format(d_step_v,ang_step_v) 
-mpe_v_name = "Spline{0}_{1}{2}".format(llh,vertex_seed,log_name_v)  
-log_name_v_srt = "_VertexSRT_{0}_{1}".format(d_step_v,ang_step_v) 
-mpe_v_srt_name = "Spline{0}_{1}{2}".format(llh,vertex_seed, log_name_v_srt)  
-log_name_v_fid = "_VertexFid_{0}_{1}".format(d_step_v,ang_step_v) 
-mpe_v_fid_name = "Spline{0}_{1}{2}".format(llh,vertex_seed,log_name_v_fid)  
-log_name_v_srt_fid = "_VertexSRTFid_{0}_{1}".format(d_step_v,ang_step_v) 
-mpe_v_srt_fid_name = "Spline{0}_{1}{2}".format(llh,vertex_seed,log_name_v_srt_fid)  
+N = 5
 
 ###GetTrackNames
-TrackNames = Utils.GetCoarseTrackNames()
-TrackNames = Utils.GetCorridorTrackNames(Tracks = TrackNames)
-FineTrackNames = Utils.GetFineTrackNames(NPositionsFid = 21, NPositionsVeto = 21)
+#TrackNames = ["VetoFit_1211","VetoFit_6248","VetoFit_6850"]
+TrackNames = Utils.GetTrackNames()
+CorTrackNames = []
+CorTrackNames = Utils.GetCorridorTrackNames(Tracks = CorTrackNames)
 FitNames = Utils.GetFitNames(TrackNames, Llh =llh, DStep = d_step_vf, AngStep = ang_step_vf)
-FineFitNames = Utils.GetFitNames(FineTrackNames, Llh =llh, DStep = d_step_vf, AngStep = ang_step_vf)
-BestFineFitsNames = Utils.GetBestFineFitsNames()
-BestCoarseFitsNames = Utils.GetBestCoarseFitsNames()
-
 SafeFitsSearch = ["MPEFit","SPEFit2","LineFit","SafeLineFit"]
-
 inf_muon_service = Utils.GetPhotonicsService(service_type="inf_muon")
-
-values = []
 #weight_calc = weighter(mctype = 'genie', nfiles = n_files) # or mctype='corsika'
-
+#print TrackNames, FitNames
+values = []
 tray = I3Tray()
 ################################END####################################################
 
@@ -212,21 +200,18 @@ def Weight(frame):
 ################################START################################################          
 
 tray.Add("I3Reader","reader", FilenameList=infiles)
-
-tray.Add(ProcessEvent, "ProcessEvent",  #For running only a certain numer of events and skipping
+#For running only a certain numer of events and skipping
+tray.Add(ProcessEvent, "ProcessEvent",  
          NSkip=n_skip, 
          NEvents=n_events)
 
 tray.Add(Utils.GetBadDOMList,"BadDOMList",Streams=[icetray.I3Frame.DetectorStatus])
 tray.AddModule("I3LineFit", "JustInCase",
-               Name="SafeLineFit",
-               InputRecoPulses="SplitInIcePulses",
-               AmpWeightPower=1.)
+              Name="SafeLineFit",
+              InputRecoPulses="SplitInIcePulses",
+              AmpWeightPower=1.)
 
 tray.AddModule(Utils.SetSafeFit,"SetSafeFit", Fits = SafeFitsSearch, SafeFitName = safe_fit)
-#tray.Add(Utils.CheckSeedFit,"ChkSeedFit",seed_fit=seed_fit) #Check if seedfit exists
-#tray.Add(Utils.CheckSeedFit,"ChkVertexFit",seed_fit=vertex_seed) #Check if seedfit exists
-#tray.Add(Utils.PrintPm,"PrintPmSeed", FitNames = [seed_fit])
 tray.AddModule("I3OMSelection<I3RecoPulseSeries>", 'selectSRTDCFidDOMs', #Select Fid DOMs
                OmittedKeys= dlist.DeepCoreFiducialDOMs,
                SelectInverse = True,
@@ -260,11 +245,12 @@ tray.AddModule("I3OMSelection<I3RecoPulseSeries>", 'selectDCVetoDOMs', #Select V
                )
 
 
-tray.AddModule(Cuts.CountAndCRatio, "PulseNCalc", PulsesFid = 'SRTPulsesFid', PulsesVeto = 'SRTPulsesVeto')
-tray.AddModule(Cuts.PulsesCut, "PulseNCut", NumPFid = 5, NumPVeto = 100)
+tray.AddModule(Cuts.CalculateVars, "CalcVars", Pulses = srt_pulses, PulsesFid = 'SRTPulsesFid', PulsesVeto = 'SRTPulsesVeto')
+tray.AddModule(Cuts.PreCut, "PreCuts")
 tray.AddModule(Mods.CoGMedIC, "CoG", PulsesFid = 'SRTPulsesFid')
-tray.AddModule(Weight,"Weight")
-tray.AddModule(Cuts.Primary,"Energy",FitName=safe_fit)
+#tray.AddModule(Weight,"Weight")
+#tray.AddModule(Cuts.Primary,"Energy",FitName=safe_fit)
+
 ###########SimpleRecoSTV############
 tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Free", #DO a Fit on a seed_fit
                 Pulses="SRTPulsesFid",
@@ -276,122 +262,60 @@ tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Free", #DO a Fit on a seed_fit
                 DistStep=d_step_f,
                 If = lambda frame: frame.Has(seed_fit))
 
-#Check if it worked
-#tray.Add(Mods.RLogLCut,"RLoGLCut", fits_to_try=[free_fit_name])
 
-# tray.AddSegment(Mods.DoSTV,"DoSTV_Free", #Run Starting TrackVeto on Seed_Fit
-#                 Pulses=pulses,
-#                 FitNames=[free_fit_name],
-#                 NSeg=n_segments_free,
-#                 PmCut=pm_thrd,
-#                 Spline=inf_muon_service,
-#                 MinCADist=min_cad_dist,
-#                 DistType=dtype_free)
+# ##Corridors
+tray.Add(Mods.MakeCorridorFits,"MakeCorridorFits", 
+         CoGFit = free_fit_name,
+         SafeFit = safe_fit)
 
-# tray.Add(Utils.CleanSTV,"CleanSTVFree",
-#           Pulses=pulses,
-#           FitNames=[seed_fit])
-
-tray.Add(Utils.PrintPm,"PrintPmFree", FitNames = [free_fit_name])
-
-#############SimpleRecoEND###############
-################Vertex#################
-
-# tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Vertex1", #DO a Fit on a seed_fit
-#                 Pulses=pulses,
-#                 FitNames=[vertex_seed],
-#                 Llh=llh,
-#                 LogName=log_name_v,
-#                 Spline=inf_muon_service,
-#                 AngStep=ang_step_v,
-#                 DistStep=d_step_v)
-
-# tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Vertex2", #DO a Fit on a seed_fit
-#                 Pulses="SRTInIcePulses",
-#                 FitNames=[vertex_seed],
-#                 Llh=llh,
-#                 LogName=log_name_v_srt,
-#                 Spline=inf_muon_service,
-#                 AngStep=ang_step_v,
-#                 DistStep=d_step_v)
-
-# tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Vertex3", #DO a Fit on a seed_fit
-#                 Pulses="PulsesFid",
-#                 FitNames=[vertex_seed],
-#                 Llh=llh,
-#                 LogName=log_name_v_fid,
-#                 Spline=inf_muon_service,
-#                 AngStep=ang_step_v,
-#                 DistStep=d_step_v)
-
-# tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Vertex4", #DO a Fit on a seed_fit
-#                 Pulses="SRTPulsesFid",
-#                 FitNames=[vertex_seed],
-#                 Llh=llh,
-#                 LogName=log_name_v_srt_fid,
-#                 Spline=inf_muon_service,
-#                 AngStep=ang_step_v,
-#                 DistStep=d_step_v)
- 
-# tray.Add(Utils.PrintPm,"PrintPmVertex", FitNames = [mpe_v_name, mpe_v_srt_name, mpe_v_fid_name, mpe_v_srt_fid_name])
-
-# ################Primary############################
-
-tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Prim", #DO a Fit on a seed_fit
-                Pulses="SRTPulsesFid",
-                FitNames=[prim],
-                Llh=llh,
-                LogName=log_name_p,
-                Spline=inf_muon_service,
-                AngStep=ang_step_p,
-                DistStep=d_step_p)
-
-
-tray.AddSegment(Mods.DoSTV,"DoSTV_Prim", 
+tray.AddSegment(Mods.DoTrackHits,"DoTH_Corrs", 
                 Pulses=pulses,
-                FitNames=[prim+"Orig"],
+                FitNames=CorTrackNames,
                 NSeg=n_segments_free,
-                PmCut=pm_thrd,
+                Percent=0.01,
                 Spline=inf_muon_service,
-                MinCADist=min_cad_dist,
-                DistType=dtype_free)
+                MinCADist=min_cad_dist)
 
-tray.Add(Utils.CleanSTV,"CleanSTVPrimOrig",
-         Pulses=pulses,
-         FitNames=[prim+"Orig"])
+tray.Add(Utils.CleanTH,"CleanTHCorFits", 
+         Pulses=pulses, 
+         FitNames=CorTrackNames) 
 
-tray.Add(Utils.PrintPm,"PrintPmPrim", FitNames = [prim+"Orig"])
+tray.AddSegment(Mods.EvalLLH,"EvalLLHCorrs", 
+         Llh=llh, 
+         FitNames=CorTrackNames, 
+         Pulses = pulses,
+         Spline = inf_muon_service)
 
-tray.AddSegment(Mods.DoSTV,"DoSTV_PrimFit", 
-                Pulses=pulses,
-                FitNames=[prim_fit_name],
-                NSeg=n_segments_free,
-                PmCut=pm_thrd,
-                Spline=inf_muon_service,
-                MinCADist=min_cad_dist,
-                DistType=dtype_free)
-
-tray.Add(Utils.CleanSTV,"CleanSTVPrim",
-         Pulses=pulses,
-         FitNames=[prim])
+tray.Add(Mods.SelectLLH,"SelectLLHCorrs", 
+         TrackNames=CorTrackNames, 
+         N = N)
 
 
-tray.Add(Utils.PrintPm,"PrintPmPrimFit", FitNames = [prim_fit_name])
-
-# #############CoarseGridSearch###############
-tray.AddModule(Mods.CascadeDir, "CasDir", CoGFit = free_fit_name, SRTPulsesFid = 'SRTPulsesFid')
+# #############Search###############
 
 tray.Add(Mods.MakeVetoFits,"MakeVetoFits", 
          CoGFit = free_fit_name,
          SafeFit = safe_fit,
          PulsesVeto = 'PulsesVeto')
 
-tray.Add(Mods.MakeCorridorFits,"MakeCorridorFits", 
-         CoGFit = free_fit_name,
-         SafeFit = safe_fit)
+tray.AddSegment(Mods.DoTrackHits,"DoTH_Veto", 
+                Pulses=pulses,
+                FitNames=TrackNames,
+                NSeg=n_segments_free,
+                Percent=0.01,
+                Spline=inf_muon_service,
+                MinCADist=min_cad_dist)
 
-tray.AddSegment(Mods.DoVetoFits, "DoVetoFits",
-                Pulses="SRTPulsesFid",
+tray.Add(Utils.CleanTH,"CleanTHVetoFits", 
+         Pulses=pulses, 
+         FitNames=TrackNames) 
+
+tray.Add(Mods.MakeVetoPulses,"MakeVetoPulses",
+         PulsesVeto = 'PulsesVeto',
+         PulsesFid = 'PulsesFid')
+
+
+tray.AddSegment(Mods.DoVetoPulseFits, "DoVetoPulseFits",
                 FitNames = TrackNames,
                 Llh = llh,
                 LogName = log_name_vf,
@@ -401,94 +325,36 @@ tray.AddSegment(Mods.DoVetoFits, "DoVetoFits",
 
 tray.Add(Utils.CleanReco,"CleanRecoVetoFits", 
          Llh=llh, 
-         FitNames=TrackNames, 
+         FitNames = FitNames, 
          AngStep = ang_step_vf,
          DistStep = d_step_vf)
 
-######CoarseFitSTV#########
-# tray.AddSegment(Mods.DoSTV,"DoSTV_VetoFits",
-#                 Pulses=pulses,
-#                 FitNames=FitNames,
-#                 NSeg=n_segments_free,
-#                 PmCut=pm_thrd,
-#                 Spline=inf_muon_service,
-#                 MinCADist=min_cad_dist,
-#                 DistType=dtype_free)
-
-# tray.Add(Utils.CleanSTV,"CleanSTVVetoFits", 
-#          Pulses=pulses, 
-#          FitNames=FitNames)
-
-
-#tray.Add(Utils.PrintPm,"PrintPmVetofits", FitNames = FitNames)
-# tray.Add(Utils.PrintPm,"PrintPmVetof2its", FitNames = TrackNames)
-
-
-# ########################FineGridSearch##########
-tray.Add(Mods.GetBestCoarseFit,"FinefitPos", FitNames = FitNames)
-tray.Add(Mods.MakeFineFitPos,"Coords", CoarseFits = BestCoarseFitsNames)
-tray.Add(Mods.MakeFineFits,"Finefits", CoarseFits = BestCoarseFitsNames)
-
-tray.AddSegment(Mods.DoVetoFits, "DoFineFits",
-                Pulses="SRTPulsesFid",
-                FitNames = FineTrackNames,
-                Llh = llh,
-                LogName = log_name_vf,
-                Spline = inf_muon_service,
-                AngStep = ang_step_vf,
-                DistStep = d_step_vf)
-
-tray.Add(Utils.CleanReco,"CleanRecoFineFits", 
+tray.AddSegment(Mods.EvalLLH,"EvalLLH", 
          Llh=llh, 
-         FitNames=FineTrackNames, 
-         AngStep = ang_step_vf,
-         DistStep = d_step_vf)
+         FitNames = FitNames, 
+         Pulses = pulses,
+         Spline = inf_muon_service)
 
-# #tray.Add(Utils.PrintPm,"PrintPmFinefits", FitNames = FineFitNames)
 
-tray.Add(Mods.GetBestFineFit,"GetBestFineFit", FitNames=FineFitNames)
-
-tray.AddSegment(Mods.DoSTV,"DoSTV_BestFineFit",
+#tray.Add(Utils.PrintLLH,"PrintLLHVetofits2", FitNames = FitNames)
+tray.Add(Mods.SelectLLH,"SelectLLH", 
+         TrackNames=TrackNames, 
+         N = N)
+# #Find P_miss
+tray.AddSegment(Mods.DoSTV,"DoSTV_VetoFits",
                 Pulses=pulses,
-                FitNames=BestFineFitsNames,
+                FitNames=FitNames+CorTrackNames,
                 NSeg=n_segments_free,
                 PmCut=pm_thrd,
                 Spline=inf_muon_service,
                 MinCADist=min_cad_dist,
                 DistType=dtype_free)
 
-tray.Add(Utils.CleanSTV,"CleanSTVFineFit", 
+tray.Add(Utils.CleanSTV,"CleanSTVVetoFits", 
          Pulses=pulses, 
-         FitNames=BestFineFitsNames)
+         FitNames = FitNames+CorTrackNames)
 
-#tray.Add(Utils.PrintPm,"PrintPmFinefits", FitNames = FineFitNames)
-tray.Add(Utils.PrintPm,"PrintPmBestCoarsefit", FitNames = BestCoarseFitsNames)
-tray.Add(Utils.PrintPm,"PrintPmBestFinefit", FitNames = BestFineFitsNames)
-#tray.Add(GetPmiss,"Values",  FitName = "BestFineFit")
-
-# #########################CleanUp###############
-tray.Add(Utils.CleanTracks,"CleanTracks", FitNames =TrackNames)
-tray.Add(Utils.CleanTracks,"CleanFineTracks", FitNames =FineTrackNames)
-tray.Add(Utils.CleanSegments,"CleanSegments", FitNames =FitNames, N = 1)
-tray.Add(Utils.CleanSegments,"CleanFineSegments", FitNames =FineFitNames, N = 1)
-tray.Add(Utils.CleanReco,"CleanRecoFitsAll", 
-         Llh=llh, 
-         FitNames=TrackNames, 
-         AngStep = ang_step_vf,
-         DistStep = d_step_vf,
-         CleanAll = True)
-
-tray.Add(Utils.CleanReco,"CleanRecoFineFitsAll", 
-         Llh=llh, 
-         FitNames=FineTrackNames, 
-         AngStep = ang_step_vf,
-         DistStep = d_step_vf,
-         CleanAll = True)
-
-# tray.Add(Utils.CleanMisc,"CleanMisc")
-
-# ###########End#########
-
+tray.Add(Utils.PrintLLH,"PrintLLHVetofits", FitNames = TrackNames+CorTrackNames)
 
 ##########Writing I3 files#############
 if len(outfile)==0:
@@ -514,4 +380,3 @@ tray.AddModule("TrashCan", "thecan")
 tray.Execute(4+2*(n_skip+n_events))
 tray.Finish()
 
-#numpy.save(outfile+".npy",numpy.array(values))                                               
