@@ -22,7 +22,7 @@ matplotlib.rcParams.update({'font.size': 20})
 matplotlib.rcParams.update({'lines.linewidth' : 3})
 dlist = DOMS.DOMS("IC86EDC")
 
-#p1 = sys.argv[1]
+p = sys.argv[1]
 #p2 = sys.argv[2]
    
 file_list_n = []
@@ -36,12 +36,12 @@ file_list_n.append(gfile_n)
 file_list_c.append(gfile_c)
 file_list_d.append(gfile_d)
 
-#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nue/Pm_genie_ic.12640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-#data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/numu/Pm_genie_ic.14640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-#data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nutau/Pm_genie_ic.16640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-# data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nue/*.i3.bz2"
-# data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/numu/*.i3.bz2"
-# data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nutau/*.i3.bz2"
+#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/Pm_genie_ic.12640.00000{0}*.i3.bz2".format(p)
+#data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/Pm_genie_ic.14640.00000{0}*.i3.bz2".format(p)
+#data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/Pm_genie_ic.16640.00000{0}*.i3.bz2".format(p)
+# data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/*.i3.bz2"
+# data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/*.i3.bz2"
+# data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/*.i3.bz2"
 # for filename in glob.glob(data_file_1):
 #     file_list_n.append(filename)
 # for filename in glob.glob(data_file_2):
@@ -49,9 +49,9 @@ file_list_d.append(gfile_d)
 # for filename in glob.glob(data_file_3):
 #     file_list_n.append(filename)
 
-data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/corsika/*.i3.bz2"
+data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/corsika/Pm_corsika_011808.000{0}*.part0.i3.bz2".format(p)
 for filename in glob.glob(data_file_1):
-    file_list_c.append(filename)
+     file_list_c.append(filename)
 
 # data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/L2/data/*.i3.bz2"
 # for filename in glob.glob(data_file_1):
@@ -83,204 +83,89 @@ print now
 
 values = []
 none = []
-
-VertexFits = ['MPEFit', 'SplineMPE_MPEFit_0_0', 'SplineMPE_MPEFit_Vertex_1_1', 'SplineMPE_MPEFit_VertexSRT_1_1', 'SplineMPE_MPEFit_VertexFid_1_1','SplineMPE_MPEFit_VertexSRTFid_1_1', 'SplineMPE_Primary_0_0']
-
-#PmNames = ['SplitInIcePulses_BestFineFit_prob_obs_0s_cherdat_1','SplitInIcePulses_PrimaryOrig_prob_obs_0s_cherdat_1', 'SplitInIcePulses_SplineMPE_Primary_0_0_prob_obs_0s_cherdat_1']
-
-PmNames0 = ['SplitInIcePulses_PrimaryOrig_prob_obs_0s_cherdat_1']
-
-PmNames1 = ['SplitInIcePulses_BestFineFits_0_prob_obs_0s_cherdat_1','SplitInIcePulses_BestFineFits_1_prob_obs_0s_cherdat_1','SplitInIcePulses_BestFineFits_2_prob_obs_0s_cherdat_1','SplitInIcePulses_BestFineFits_3_prob_obs_0s_cherdat_1','SplitInIcePulses_BestFineFits_4_prob_obs_0s_cherdat_1'] 
-
-def Genie(frame,name):
-    if name == "genie":
-        return True
-    else:
-        return False
- 
-def event_counter(frame):                                                                      
-    global count                                                                                 
-#        if "LineFit" not in frame.keys():                                                           
-#            print count #frame["LineFit"]                                                          
-    count += 1                                                                                
-    if count%1000 ==0:
-        print count
     
-
-def Values(frame, year,  PmNames0, PmNames1):
-    global values 
-    vt = {}
-    cor = {}
-    arr = []
-
-    if frame.Has("Weight") and frame.Has("VT_Q"):    
-            
-#        arr.append(frame["Energy"].value)
-#        arr.append(frame["Contained"].value)
-        arr.append(frame["Weight"].value)
-        arr.append(frame["Prim_Q"].value)
-        arr.append(frame["Prim_WQ"].value)
-        arr.append(frame["Prim_P"].value)
-        arr.append(frame["Prim_H"].value)
-        arr.append(frame["Prim_Tot"].value)
-        arr.append(np.array(frame["VT_Q"]))
-        arr.append(np.array(frame["VT_WQ"]))
-        arr.append(np.array(frame["VT_P"]))
-        arr.append(np.array(frame["VT_H"]))
-        arr.append(np.array(frame["VT_Tot"]))
-        arr.append(np.array(frame["VT_PC"]))
-        arr.append(np.array(frame["CT_Q"]))
-        arr.append(np.array(frame["CT_WQ"]))
-        arr.append(np.array(frame["CT_P"]))
-        arr.append(np.array(frame["CT_H"]))
-        arr.append(np.array(frame["CT_Tot"]))
-        arr.append(np.array(frame["CT_PC"]))
-        
-        values.append(arr)
-        if len(values)%100 == 0:
-            print len(values)/100
+def TrackStats(frame):    
+    corrs = set()
+    vfits = set()
+    for k in frame.keys():  
+        if ("CorridorTrack" in k):
+            words = k.split("_")
+            idx = words.index("CorridorTrack")+1
+            name = "CorridorTrack"+"_"+words[idx]
+            if name not in corrs:
+                corrs.add(name)
   
-        return True
+        if ("VetoFit" in k):
+            words = k.split("_")
+            idx = words.index("VetoFit")+1
+            name = "VetoFit"+"_"+words[idx]
+            if name not in vfits:
+                vfits.add(name)
 
-    print"Something Missing"
-
-def MaxCorTrack(frame):
-    cor = set()
-    Qs = []
-    WQs = []
-    Ps = []
-    Hs = []
-    Tot = []
-    name_prim_p = "TrackHits_PrimaryOrig_SplitInIcePulses_coincObsProbsList_1"
-    name_prim_q = "TrackHits_PrimaryOrig_SplitInIcePulses_coincObsQsList_1"
-    prim_p = frame[name_prim_p]
-    prim_q = frame[name_prim_q]
-    p_oms = []
-    for om, pr in prim_p:
-        if pr:
-            p_oms.append(om)
-
-    prim_coinc =[]
-
-    for k in frame.keys():
+    tracknames_c =  list(corrs)
+    tracknames_v = list(vfits)
+    trk_arr = []
+    corr_arr = []
+    for trackname in tracknames_v:
+        logl = 0
+        pm = 0
+        prbs = []
         qs = []
-        wqs = []
-        lqs = []
-        hs = 0
-        primc = 0
-        if ("TrackHits_CorridorTrack" in k) and ("coincObsQsList" in k):
-            trk_n = k.split("_")[2]
-            if not trk_n in cor:
-                cor.update([trk_n])
-                namep = "TrackHits_CorridorTrack_{0}_SplitInIcePulses_coincObsProbsList_1".format(trk_n)
-                nameq = "TrackHits_CorridorTrack_{0}_SplitInIcePulses_coincObsQsList_1".format(trk_n)
-                probs =  frame[namep]
-                chs =  frame[nameq]
-                tot_doms = len(chs)
 
-                #non_zero = {}
-                for om, q in chs:
-                    if len(q) != 0:
-                        if om in p_oms:
-                            primc = primc +1
-                        
-                        qs.append(sum(q))
-                        hs = hs + 1
-                        lqs.append(len(q))
-                        wqs.append(np.array(probs[om]).dot(np.array(q)))
+        track = frame[trackname]
+        track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
+        fit_arr = []
+        fitname = "SplineMPE_"+trackname+"_1_1"
+        if frame.Has(fitname):  
+             fit = frame[fitname]
+             fit_arr = [fit.pos.x,fit.pos.y,fit.pos.z,fit.dir.zenith,fit.dir.azimuth]
 
-                if hs != 0:
-                    Qs.append(sum(qs))
-                    WQs.append(sum(wqs)) 
-                    Ps.append(sum(lqs))
-                    Hs.append(hs)
-                    Tot.append(tot_doms)
-                    prim_coinc.append(primc)
-                    
+        for k in frame.keys():
+            
+            if ("LLHCalcMPE" in k) and (trackname in k):
+                logl = frame[k].logl
+            if ("prob_obs_0s" in k) and (trackname in k):
+                pm = frame[k].value
+            if ("coincObsQsList" in k) and (trackname in k):
+                Ps = frame[k]
+                for om, value in Ps:
+                    if value:
+                        qs.append(value[0])
+            if ("coincObsProbsList" in k) and (trackname in k):
+                Probs = frame[k]
+                for om, value in Probs:
+                    if value:
+                        prbs.append(value[0])
 
-    frame["CT_Q"] = dataclasses.I3VectorDouble(Qs)
-    frame["CT_WQ"] = dataclasses.I3VectorDouble(WQs)
-    frame["CT_P"] = dataclasses.I3VectorDouble(Ps)
-    frame["CT_H"] = dataclasses.I3VectorDouble(Hs)
-    frame["CT_Tot"] = dataclasses.I3VectorDouble(Tot)
-    frame["CT_PC"] = dataclasses.I3VectorDouble(prim_coinc)
-
-def MaxVetoTrack(frame):
-    cor = set()
-    Qs = []
-    WQs = []
-    Ps = []
-    Hs = []
-    Tot = []
-    name_prim_p = "TrackHits_PrimaryOrig_SplitInIcePulses_coincObsProbsList_1"
-    name_prim_q = "TrackHits_PrimaryOrig_SplitInIcePulses_coincObsQsList_1"
-    prim_p = frame[name_prim_p]
-    prim_q = frame[name_prim_q]
-    pqs = []
-    pwqs = []
-    plqs = []
-    phs = 0
-    p_oms = []
-    for om, pr in prim_p:
-        if pr:
-            p_oms.append(om)
-            pqs.append(sum(prim_q[om]))
-            phs = phs + 1
-            plqs.append(len(prim_q[om]))
-            pwqs.append(np.array(pr).dot(np.array(prim_q[om])))
-
-    frame["Prim_Q"] = dataclasses.I3Double(sum(pqs))
-    frame["Prim_WQ"] = dataclasses.I3Double(sum(pwqs))
-    frame["Prim_P"] = dataclasses.I3Double(sum(plqs))
-    frame["Prim_H"] = dataclasses.I3Double(phs)
-    frame["Prim_Tot"] = dataclasses.I3Double(len(prim_p))
-
-
-    prim_coinc = []
-
-    for k in frame.keys():
+        trk_arr.append([logl,pm,prbs,qs,track_arr,fit_arr])
+        
+    for trackname in tracknames_c:
+        logl = 0
+        pm = 0
+        prbs = []
         qs = []
-        wqs = []
-        lqs = []
-        hs = 0
-        primc = 0
-        if ("TrackHits_VetoFit" in k) and ("coincObsQsList" in k):
-            trk_n = k.split("_")[2]
-            if not trk_n in cor:
-#                print trk_n
-                namep = "TrackHits_VetoFit_{0}_SplitInIcePulses_coincObsProbsList_1".format(trk_n)
-                nameq = "TrackHits_VetoFit_{0}_SplitInIcePulses_coincObsQsList_1".format(trk_n)
-                probs =  frame[namep]
-                chs =  frame[nameq]
-                cor.update([trk_n])
-                tot_doms = len(chs)
 
-                for om, pr in probs:
-                    if pr:
-                        if om in p_oms:
-                            primc = primc +1
-                        
-                        qs.append(sum(chs[om]))
-                        hs = hs + 1
-                        lqs.append(len(chs[om]))
-                        wqs.append(np.array(pr).dot(np.array(chs[om])))
-                if qs:
-                    prim_coinc.append(primc)
-                    Qs.append(sum(qs))
-                    WQs.append(sum(wqs)) 
-                    Ps.append(sum(lqs))
-                    Hs.append(hs)
-                    Tot.append(tot_doms)
+        track = frame[trackname]
+        track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
+       
+        for k in frame.keys():
+            
+            if ("LLHCalcMPE" in k) and (trackname in k):
+                logl = frame[k].logl
+            if ("prob_obs_0s" in k) and (trackname in k):
+                pm = frame[k].value
+            if ("coincObsQsList" in k) and (trackname in k):
+                Ps = frame[k]
+                for om, value in Ps:
+                    if value:
+                        qs.append(value[0])
+            if ("coincObsProbsList" in k) and (trackname in k):
+                Probs = frame[k]
+                for om, value in Probs:
+                    if value:
+                        prbs.append(value[0])
 
-#    print prim_coinc
-    frame["VT_Q"] = dataclasses.I3VectorDouble(Qs)
-    frame["VT_WQ"] = dataclasses.I3VectorDouble(WQs)
-    frame["VT_P"] = dataclasses.I3VectorDouble(Ps)
-    frame["VT_H"] = dataclasses.I3VectorDouble(Hs)
-    frame["VT_Tot"] = dataclasses.I3VectorDouble(Tot)
-    frame["VT_PC"] = dataclasses.I3VectorDouble(prim_coinc)
-
-def Energy(frame):
+        corr_arr.append([logl,pm,prbs,qs,track_arr])
 
     vertex = 0
     energy = 0
@@ -288,7 +173,7 @@ def Energy(frame):
     direc = 0
     contained = False
     if frame.Has("I3MCTree"):
-        prim = dataclasses.get_most_energetic_neutrino(frame['I3MCTree'])
+        prim = dataclasses.get_most_energetic_muon(frame['I3MCTree'])
         vertex = prim.pos
         direc = prim.dir
         time = prim.time
@@ -301,13 +186,14 @@ def Energy(frame):
         if (vertex.z < top) and (vertex.z > bottom) and path.contains_point((vertex.x, vertex.y)):
             contained = True
     
-    frame["Energy"] = dataclasses.I3Double(energy)
-    frame["Time"] = dataclasses.I3Double(time)
-    frame["Dir"] = dataclasses.I3Direction(direc)
-    frame["Vertex"] = dataclasses.I3Position(vertex)
-    frame["Contained"] = icetray.I3Bool(contained)
+    arr = [energy, contained, time, vertex.x, vertex.y, vertex.z, direc.azimuth, direc.zenith]
+    
+    global values
+    #print "SSSSS", arr+[trk_arr,corr_arr]
+    values.append(arr+[trk_arr,corr_arr])
+    if len(values)%100 == 0:
+        print len(values)/100
 
-    return
 
 #@icetray.traysegment
 def TestCuts(name, file_list, year):
@@ -315,11 +201,7 @@ def TestCuts(name, file_list, year):
     tray = I3Tray()
     tray.AddModule("I3Reader", name +"reader", FilenameList = file_list)
     
-#    tray.AddModule(event_counter, 'counter', Streams = [icetray.I3Frame.Physics])        
-    #tray.AddModule(Energy, name +"GE", If = lambda f: Genie(f,name))   
-    tray.AddModule(MaxCorTrack, name +"CT")   
-    tray.AddModule(MaxVetoTrack, name +"VT")   
-    tray.Add(Values, name + "getvalues", year = year, PmNames0 = PmNames0, PmNames1 = PmNames1)
+    tray.AddModule(TrackStats, name +"CT")   
     #tray.AddModule('I3Writer', 'writer', Filename='TestCutsNeutrino2'+'.i3.bz2', Streams=[icetray.I3Frame.DAQ,icetray.I3Frame.Physics], DropOrphanStreams=[icetray.I3Frame.DAQ])
     tray.AddModule('TrashCan','thecan')
     tray.Execute()
@@ -327,19 +209,19 @@ def TestCuts(name, file_list, year):
 
     return
 
-print count
+#print count
 import pickle
-TestCuts("genie", file_list = file_list_c, year = "12")
+TestCuts("Cors", file_list = file_list_c, year = "12")
 values_c = values[:]
-name_f = "Corsika_TH_Prim.pkl"
-#name_f = "Genie_TH_numu_{0}_{1}.pkl".format(p1,p2)
+#name_f = "Genie_FullTest.pkl"
+name_f = "Corsika_TH_{0}.npy".format(p)
 #np.save(name_f,values_n)
 output = open(name_f,"wb")
 pickle.dump(values_c, output, -1)
 output.close()
-#none_n = none[:]
-del values[:]
-#del none[:]
-now=datetime.now()
+# #none_n = none[:]
+# del values[:]
+# #del none[:]
+# now=datetime.now()
 print "corsika finished", now, len(values_c)
 

@@ -22,9 +22,9 @@ matplotlib.rcParams.update({'font.size': 20})
 matplotlib.rcParams.update({'lines.linewidth' : 3})
 dlist = DOMS.DOMS("IC86EDC")
 
-#p1 = sys.argv[1]
+p = sys.argv[1]
 #p2 = sys.argv[2]
-   
+#print p, int(p)   
 file_list_n = []
 file_list_c = []
 file_list_d = []
@@ -36,18 +36,20 @@ file_list_n.append(gfile_n)
 file_list_c.append(gfile_c)
 file_list_d.append(gfile_d)
 
-#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nue/Pm_genie_ic.12640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-#data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/numu/Pm_genie_ic.14640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-#data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/pm_trial/nutau/Pm_genie_ic.16640.00000{0}.part{1}*.i3.bz2".format(p1,p2)
-data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/*.i3.bz2"
-data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/*.i3.bz2"
-data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/*.i3.bz2"
+#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/Pm_genie_ic.12640.0000{:02d}*.i3.bz2".format(int(p))
+#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/Pm_genie_ic.14640.0000{:02d}*.i3.bz2".format(int(p))
+#print data_file_1
+data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/Pm_genie_ic.16640.0000{:02d}*.i3.bz2".format(int(p))
+# data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/*.i3.bz2"
+# data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/*.i3.bz2"
+# data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/*.i3.bz2"
 for filename in glob.glob(data_file_1):
     file_list_n.append(filename)
-for filename in glob.glob(data_file_2):
-    file_list_n.append(filename)
-for filename in glob.glob(data_file_3):
-    file_list_n.append(filename)
+print file_list_n    
+# for filename in glob.glob(data_file_2):
+#     file_list_n.append(filename)
+# for filename in glob.glob(data_file_3):
+#     file_list_n.append(filename)
 
 # data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/corsika/*.i3.bz2"
 # for filename in glob.glob(data_file_1):
@@ -115,8 +117,10 @@ def TrackStats(frame):
         track = frame[trackname]
         track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
         fitname = "SplineMPE_"+trackname+"_1_1"
-        fit = frame[fitname]
-        fit_arr = [fit.pos.x,fit.pos.y,fit.pos.z,fit.dir.zenith,fit.dir.azimuth]
+        fit_arr = []
+        if frame.Has(fitname):
+            fit = frame[fitname]
+            fit_arr = [fit.pos.x,fit.pos.y,fit.pos.z,fit.dir.zenith,fit.dir.azimuth]
 
         for k in frame.keys():
             
@@ -128,12 +132,12 @@ def TrackStats(frame):
                 Ps = frame[k]
                 for om, value in Ps:
                     if value:
-                        qs.append(value)
+                        qs.append(value[0])
             if ("coincObsProbsList" in k) and (trackname in k):
                 Probs = frame[k]
                 for om, value in Probs:
                     if value:
-                        prbs.append(value)
+                        prbs.append(value[0])
 
         trk_arr.append([logl,pm,prbs,qs,track_arr,fit_arr])
         
@@ -156,14 +160,12 @@ def TrackStats(frame):
                 Ps = frame[k]
                 for om, value in Ps:
                     if value:
-                        qs.append(value)
+                        qs.append(value[0])
             if ("coincObsProbsList" in k) and (trackname in k):
                 Probs = frame[k]
                 for om, value in Probs:
                     if value:
-                        prbs.append(value)
-
-        print qs,prbs
+                        prbs.append(value[0])
 
         corr_arr.append([logl,pm,prbs,qs,track_arr])
 
@@ -188,48 +190,11 @@ def TrackStats(frame):
     
     arr = [energy, contained, time, vertex.x, vertex.y, vertex.z, direc.azimuth, direc.zenith]
     
-
-    print "a", arr
-    print "trk", trk_arr
-    print "corr", corr_arr
-
-def Values(frame, year,  PmNames0, PmNames1):
-    global values 
-    vt = {}
-    cor = {}
-    arr = []
-
-    if frame.Has("Energy") and frame.Has("Contained") and frame.Has("Weight") and frame.Has("VT_Q"):    
-            
-        arr.append(frame["Energy"].value)
-        arr.append(frame["Contained"].value)
-        arr.append(frame["Weight"].value)
-        arr.append(frame["Prim_Q"].value)
-        arr.append(frame["Prim_WQ"].value)
-        arr.append(frame["Prim_P"].value) 
-        arr.append(frame["Prim_H"].value) 
-        arr.append(frame["Prim_Tot"].value)
-   
-        arr.append(np.array(frame["VT_Q"]))
-        arr.append(np.array(frame["VT_WQ"]))
-        arr.append(np.array(frame["VT_P"]))
-        arr.append(np.array(frame["VT_H"]))
-        arr.append(np.array(frame["VT_Tot"]))
-        arr.append(np.array(frame["VT_PC"]))
-        arr.append(np.array(frame["CT_Q"]))
-        arr.append(np.array(frame["CT_WQ"]))
-        arr.append(np.array(frame["CT_P"]))
-        arr.append(np.array(frame["CT_H"]))
-        arr.append(np.array(frame["CT_Tot"]))
-        arr.append(np.array(frame["CT_PC"]))
-        values.append(arr)
-        if len(values)%100 == 0:
-            print len(values)/100
-  
-        return True
-
-    print"Something Missing"
-
+    global values
+    #print "SSSSS", arr+[trk_arr,corr_arr]
+    values.append(arr+[trk_arr,corr_arr])
+    if len(values)%100 == 0:
+        print len(values)/100
 
 
 #@icetray.traysegment
@@ -238,11 +203,7 @@ def TestCuts(name, file_list, year):
     tray = I3Tray()
     tray.AddModule("I3Reader", name +"reader", FilenameList = file_list)
     
-#    tray.AddModule(event_counter, 'counter', Streams = [icetray.I3Frame.Physics])        
-    #tray.AddModule(Energy, name +"GE", If = lambda f: Genie(f,name))   
     tray.AddModule(TrackStats, name +"CT")   
-    #tray.AddModule(MaxVetoTrack, name +"VT", If = lambda f: Genie(f,name))   
-    #tray.Add(Values, name + "getvalues", year = year, PmNames0 = PmNames0, PmNames1 = PmNames1)
     #tray.AddModule('I3Writer', 'writer', Filename='TestCutsNeutrino2'+'.i3.bz2', Streams=[icetray.I3Frame.DAQ,icetray.I3Frame.Physics], DropOrphanStreams=[icetray.I3Frame.DAQ])
     tray.AddModule('TrashCan','thecan')
     tray.Execute()
@@ -251,18 +212,18 @@ def TestCuts(name, file_list, year):
     return
 
 #print count
-# import pickle
+import pickle
 TestCuts("genie", file_list = file_list_n, year = "13")
-# values_n = values[:]
-# name_f = "Genie_TH_Prim.pkl"
-# #name_f = "Genie_TH_numu_{0}_{1}.pkl".format(p1,p2)
-# #np.save(name_f,values_n)
-# output = open(name_f,"wb")
-# pickle.dump(values_n, output, -1)
-# output.close()
+values_n = values[:]
+#name_f = "Genie_FullTest.pkl"
+name_f = "Genie_TH_nutau_{0}.npy".format(p)
+#np.save(name_f,values_n)
+output = open(name_f,"wb")
+pickle.dump(values_n, output, -1)
+output.close()
 # #none_n = none[:]
 # del values[:]
 # #del none[:]
 # now=datetime.now()
-# print "genie finished", now, len(values_n)
+print "genie finished", now, len(values_n)
 
