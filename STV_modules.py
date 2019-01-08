@@ -24,7 +24,7 @@ def DoSplineReco(tray,name,
     tray.AddService("I3GulliverMinuitFactory", "Minuit%s" % (Llh) + LogName,
                     Algorithm="SIMPLEX",
                     MaxIterations=100000,
-                    Tolerance=100000000000000000,
+                    Tolerance=0.1,
                     )
 
     tray.AddService("I3SimpleParametrizationFactory", "SimpleTrack%s" % (Llh) + LogName,
@@ -73,6 +73,39 @@ def EvalLLH(tray, name, Llh, Pulses, Spline, FitNames):
                         FitName=fitname,
                         LogLikelihoodService="LLHSplineEval%s" % (Llh)+"_"+fitname,
                         )
+
+
+def EvalLLHInit(tray, name, Llh, Spline, FitNames):
+    for fitname in FitNames:
+#        tray.AddModule(lambda frame: frame.Has(fitname),"CheckEval%s"%(Llh)+"_"+fitname)  
+        tray.AddService("I3SplineRecoLikelihoodFactory","LLHSplineEvalInit%s"%(Llh)+"_"+fitname,
+                        PhotonicsService=Spline,
+                        Pulses=fitname+"_Pulses",
+                        Likelihood=Llh,
+                        #NoiseRate=10*I3Units.hertz,          
+                        )
+
+        tray.AddModule("I3LogLikelihoodCalculator", "LLHCalcInit%s" % (Llh)+"_" + fitname,
+                        FitName=fitname,
+                        LogLikelihoodService="LLHSplineEvalInit%s" % (Llh)+"_"+fitname,
+                       )
+
+def EvalLLHFin(tray, name, Llh, Spline, FitNames):
+    for fitname in FitNames:
+#        tray.AddModule(lambda frame: frame.Has(fitname),"CheckEval%s"%(Llh)+"_"+fitname)  
+        tray.AddService("I3SplineRecoLikelihoodFactory","LLHSplineEvalFin%s"%(Llh)+"_"+fitname,
+                        PhotonicsService=Spline,
+                        Pulses=fitname[10:-4]+"_Pulses",
+                        Likelihood=Llh,
+                        #NoiseRate=10*I3Units.hertz,          
+                        )
+
+        tray.AddModule("I3LogLikelihoodCalculator", "LLHCalcFin%s" % (Llh)+"_" + fitname,
+                        FitName=fitname,
+                        LogLikelihoodService="LLHSplineEvalFin%s" % (Llh)+"_"+fitname,
+                        )
+                        
+
 
 
 def DoVetoFits(tray, name, Pulses,Llh,LogName,FitNames, Spline, AngStep, DistStep):
@@ -324,10 +357,8 @@ def MakeVetoPulses(frame, PulsesVeto, PulsesFid):
             for om, q in Qs: #Find non zero hits
                 if sum(q) != 0:
                     veto_OMs.append(om)
+                    #print om, q
 
-            if not veto_OMs: #Didn't find any non-zero hits
-                continue
-#            print veto_OMs
 
             total_hits = copy.deepcopy(dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesFid))
 #            print "total", total_hits
@@ -335,15 +366,15 @@ def MakeVetoPulses(frame, PulsesVeto, PulsesFid):
             if len(total_hits) == 0:
                 print "MakeVetoPulses: No Hits in DC!"
                 return False
-    
-            for om in veto_OMs: #Go through all compatiable hits
-                if om in total_hits:
-                    print "MakeVetoPulses: Veto and Fid pulses not separated!"
-#                    print "OM", om
-                    return False
-                #Make Pulses Series out of them
-                total_hits[om] = veto_hits[om]
 
+            if veto_OMs:
+                for om in veto_OMs: #Go through all compatiable hits
+                    if om in total_hits:
+                        print "MakeVetoPulses: Veto and Fid pulses not separated!"
+                        return False
+                    #Make Pulses Series out of them
+                    total_hits[om] = veto_hits[om]
+     
             name = 'VetoFit_{0}_Pulses'.format(trk)
             frame[name]=total_hits
                         

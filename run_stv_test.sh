@@ -84,12 +84,12 @@ cd ${outdir}
 #subpart=0                                                                                           
 
 
-num_done=NUM_DONE_INPUT                                                                               
-run_pad=RUN_INPUT                                                                                     
-subpart=SUBPART_INPUT
+num_done=0                                                                               
+run_pad=000000                                                                                     
+subpart=0
 echo 'run: '$run_pad
 echo 'subpart: '$subpart
-num_events=NUM_PER_SUBPART  
+num_events=1  
 echo "num_events per subpart: "$num_events
 num_skip=$(($subpart*$num_events + $num_done))
 #num_skip=`expr $subpart \* $num_events \+ $num_done`

@@ -264,31 +264,31 @@ tray.AddSegment(Mods.DoVetoFits,"DoSplineRecoFit_Free", #DO a Fit on a seed_fit
 
 
 # ##Corridors
-tray.Add(Mods.MakeCorridorFits,"MakeCorridorFits", 
-         CoGFit = free_fit_name,
-         SafeFit = safe_fit)
+# tray.Add(Mods.MakeCorridorFits,"MakeCorridorFits", 
+#          CoGFit = free_fit_name,
+#          SafeFit = safe_fit)
 
-tray.AddSegment(Mods.DoTrackHits,"DoTH_Corrs", 
-                Pulses=pulses,
-                FitNames=CorTrackNames,
-                NSeg=n_segments_free,
-                Percent=0.01,
-                Spline=inf_muon_service,
-                MinCADist=min_cad_dist)
+# tray.AddSegment(Mods.DoTrackHits,"DoTH_Corrs", 
+#                 Pulses=pulses,
+#                 FitNames=CorTrackNames,
+#                 NSeg=n_segments_free,
+#                 Percent=0.01,
+#                 Spline=inf_muon_service,
+#                 MinCADist=min_cad_dist)
 
-tray.Add(Utils.CleanTH,"CleanTHCorFits", 
-         Pulses=pulses, 
-         FitNames=CorTrackNames) 
+# tray.Add(Utils.CleanTH,"CleanTHCorFits", 
+#          Pulses=pulses, 
+#          FitNames=CorTrackNames) 
 
-tray.AddSegment(Mods.EvalLLH,"EvalLLHCorrs", 
-         Llh=llh, 
-         FitNames=CorTrackNames, 
-         Pulses = pulses,
-         Spline = inf_muon_service)
+# tray.AddSegment(Mods.EvalLLH,"EvalLLHCorrs", 
+#          Llh=llh, 
+#          FitNames=CorTrackNames, 
+#          Pulses = pulses,
+#          Spline = inf_muon_service)
 
-tray.Add(Mods.SelectLLH,"SelectLLHCorrs", 
-         TrackNames=CorTrackNames, 
-         N = N)
+# tray.Add(Mods.SelectLLH,"SelectLLHCorrs", 
+#          TrackNames=CorTrackNames, 
+#          N = N)
 
 
 # #############Search###############
@@ -306,13 +306,20 @@ tray.AddSegment(Mods.DoTrackHits,"DoTH_Veto",
                 Spline=inf_muon_service,
                 MinCADist=min_cad_dist)
 
-tray.Add(Utils.CleanTH,"CleanTHVetoFits", 
-         Pulses=pulses, 
-         FitNames=TrackNames) 
+
+
+# tray.Add(Utils.CleanTH,"CleanTHVetoFits", 
+#          Pulses=pulses, 
+#          FitNames=TrackNames) 
 
 tray.Add(Mods.MakeVetoPulses,"MakeVetoPulses",
          PulsesVeto = 'PulsesVeto',
          PulsesFid = 'PulsesFid')
+
+tray.AddSegment(Mods.EvalLLHInit,"EvalLLHInit", 
+         Llh=llh, 
+         FitNames = TrackNames, 
+         Spline = inf_muon_service)
 
 
 tray.AddSegment(Mods.DoVetoPulseFits, "DoVetoPulseFits",
@@ -323,11 +330,17 @@ tray.AddSegment(Mods.DoVetoPulseFits, "DoVetoPulseFits",
                 AngStep = ang_step_vf,
                 DistStep = d_step_vf)
 
-tray.Add(Utils.CleanReco,"CleanRecoVetoFits", 
+tray.AddSegment(Mods.EvalLLHFin,"EvalLLHFin", 
          Llh=llh, 
          FitNames = FitNames, 
-         AngStep = ang_step_vf,
-         DistStep = d_step_vf)
+         Spline = inf_muon_service)
+
+
+# tray.Add(Utils.CleanReco,"CleanRecoVetoFits", 
+#          Llh=llh, 
+#          FitNames = FitNames, 
+#          AngStep = ang_step_vf,
+#          DistStep = d_step_vf)
 
 tray.AddSegment(Mods.EvalLLH,"EvalLLH", 
          Llh=llh, 
@@ -336,14 +349,14 @@ tray.AddSegment(Mods.EvalLLH,"EvalLLH",
          Spline = inf_muon_service)
 
 
-#tray.Add(Utils.PrintLLH,"PrintLLHVetofits2", FitNames = FitNames)
+# #tray.Add(Utils.PrintLLH,"PrintLLHVetofits2", FitNames = FitNames)
 tray.Add(Mods.SelectLLH,"SelectLLH", 
          TrackNames=TrackNames, 
          N = N)
 # #Find P_miss
 tray.AddSegment(Mods.DoSTV,"DoSTV_VetoFits",
                 Pulses=pulses,
-                FitNames=FitNames+CorTrackNames,
+                FitNames=FitNames,
                 NSeg=n_segments_free,
                 PmCut=pm_thrd,
                 Spline=inf_muon_service,
@@ -354,7 +367,7 @@ tray.Add(Utils.CleanSTV,"CleanSTVVetoFits",
          Pulses=pulses, 
          FitNames = FitNames+CorTrackNames)
 
-tray.Add(Utils.PrintLLH,"PrintLLHVetofits", FitNames = TrackNames+CorTrackNames)
+tray.Add(Utils.PrintLLH,"PrintLLHVetofits", FitNames = TrackNames)
 
 ##########Writing I3 files#############
 if len(outfile)==0:

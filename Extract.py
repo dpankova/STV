@@ -36,10 +36,10 @@ file_list_n.append(gfile_n)
 file_list_c.append(gfile_c)
 file_list_d.append(gfile_d)
 
-#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/Pm_genie_ic.12640.0000{:02d}*.i3.bz2".format(int(p))
+data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/Pm_genie_ic.12640.0000{:02d}*.i3.bz2".format(int(p))
 #data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/Pm_genie_ic.14640.0000{:02d}*.i3.bz2".format(int(p))
 #print data_file_1
-data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/Pm_genie_ic.16640.0000{:02d}*.i3.bz2".format(int(p))
+#data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/Pm_genie_ic.16640.0000{:02d}*.i3.bz2".format(int(p))
 # data_file_1 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nue/*.i3.bz2"
 # data_file_2 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/numu/*.i3.bz2"
 # data_file_3 = "/gpfs/group/dfc13/default/dasha/mlarson/output_1/nutau/*.i3.bz2"
@@ -110,9 +110,14 @@ def TrackStats(frame):
     corr_arr = []
     for trackname in tracknames_v:
         logl = 0
+        ilogl = 0
+        flogl = 0
+        tlogl = 0
         pm = 0
         prbs = []
+        nprbs = []
         qs = []
+        nqs = []
 
         track = frame[trackname]
         track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
@@ -123,9 +128,14 @@ def TrackStats(frame):
             fit_arr = [fit.pos.x,fit.pos.y,fit.pos.z,fit.dir.zenith,fit.dir.azimuth]
 
         for k in frame.keys():
-            
+            if ("SplineMPE" in k) and (trackname in k) and ("FitParams" in k):
+                tlogl = frame[k].logl
             if ("LLHCalcMPE" in k) and (trackname in k):
                 logl = frame[k].logl
+            if ("LLHCalcInitMPE" in k) and (trackname in k):
+                ilogl = frame[k].logl
+            if ("LLHCalcFinMPE" in k) and (trackname in k):
+                flogl = frame[k].logl    
             if ("prob_obs_0s" in k) and (trackname in k):
                 pm = frame[k].value
             if ("coincObsQsList" in k) and (trackname in k):
@@ -133,41 +143,55 @@ def TrackStats(frame):
                 for om, value in Ps:
                     if value:
                         qs.append(value[0])
+            if ("noncoincObsQsList" in k) and (trackname in k):
+                Ps = frame[k]
+                for om, value in Ps:
+                    if value:
+                        nqs.append(value[0])
+            
+                        
             if ("coincObsProbsList" in k) and (trackname in k):
                 Probs = frame[k]
                 for om, value in Probs:
                     if value:
                         prbs.append(value[0])
 
-        trk_arr.append([logl,pm,prbs,qs,track_arr,fit_arr])
+            if ("noncoincObsProbsList" in k) and (trackname in k):
+                Probs = frame[k]
+                for om, value in Probs:
+                    if value:
+                       nprbs.append(value[0])
+            
+
+        trk_arr.append([logl,pm,ilogl,tlogl,flogl,prbs,qs,nprbs,nqs,track_arr,fit_arr])
         
-    for trackname in tracknames_c:
-        logl = 0
-        pm = 0
-        prbs = []
-        qs = []
+    # for trackname in tracknames_c:
+    #     logl = 0
+    #     pm = 0
+    #     prbs = []
+    #     qs = []
 
-        track = frame[trackname]
-        track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
+    #     track = frame[trackname]
+    #     track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
        
-        for k in frame.keys():
+    #     for k in frame.keys():
             
-            if ("LLHCalcMPE" in k) and (trackname in k):
-                logl = frame[k].logl
-            if ("prob_obs_0s" in k) and (trackname in k):
-                pm = frame[k].value
-            if ("coincObsQsList" in k) and (trackname in k):
-                Ps = frame[k]
-                for om, value in Ps:
-                    if value:
-                        qs.append(value[0])
-            if ("coincObsProbsList" in k) and (trackname in k):
-                Probs = frame[k]
-                for om, value in Probs:
-                    if value:
-                        prbs.append(value[0])
+    #         if ("LLHCalcMPE" in k) and (trackname in k):
+    #             logl = frame[k].logl
+    #         if ("prob_obs_0s" in k) and (trackname in k):
+    #             pm = frame[k].value
+    #         if ("coincObsQsList" in k) and (trackname in k):
+    #             Ps = frame[k]
+    #             for om, value in Ps:
+    #                 if value:
+    #                     qs.append(value[0])
+    #         if ("coincObsProbsList" in k) and (trackname in k):
+    #             Probs = frame[k]
+    #             for om, value in Probs:
+    #                 if value:
+    #                     prbs.append(value[0])
 
-        corr_arr.append([logl,pm,prbs,qs,track_arr])
+    #     corr_arr.append([logl,pm,prbs,qs,track_arr])
 
     vertex = 0
     energy = 0
@@ -192,7 +216,8 @@ def TrackStats(frame):
     
     global values
     #print "SSSSS", arr+[trk_arr,corr_arr]
-    values.append(arr+[trk_arr,corr_arr])
+#    values.append(arr+[trk_arr,corr_arr])
+    values.append(arr+trk_arr)
     if len(values)%100 == 0:
         print len(values)/100
 
@@ -216,7 +241,7 @@ import pickle
 TestCuts("genie", file_list = file_list_n, year = "13")
 values_n = values[:]
 #name_f = "Genie_FullTest.pkl"
-name_f = "Genie_TH_nutau_{0}.npy".format(p)
+name_f = "Genie_TH2_nue_{0}.npy".format(p)
 #np.save(name_f,values_n)
 output = open(name_f,"wb")
 pickle.dump(values_n, output, -1)

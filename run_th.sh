@@ -22,7 +22,7 @@ UHOME=~dup193
 export PARROT_RUN="$UHOME/cctools/bin/parrot_run"
 export PARROT_CVMFS_ALIEN_CACHE="/gpfs/group/dfc13/default/cache/"
 export CVMFS="/cvmfs/icecube.opensciencegrid.org"
-ENV_SHELL="/gpfs/group/dfc13/default/dasha/icerec_V05-01-05/build/env-shell.sh"
+ENV_SHELL="/gpfs/group/dfc13/default/dasha/icerec_V05-01-05_TH/build/env-shell.sh"
 SCRIPT="/storage/home/dup193/work/estes/new_estes/STV/Extract.py"
 #SCRIPT="/storage/home/fxh140/work/muon_background/veto/ESTES_run.py"
 

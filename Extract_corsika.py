@@ -108,10 +108,16 @@ def TrackStats(frame):
     corr_arr = []
     for trackname in tracknames_v:
         logl = 0
+        ilogl = 0
+        flogl = 0
+        tlogl = 0
         pm = 0
         prbs = []
+        nprbs = []
         qs = []
-
+        nqs = []
+      
+      
         track = frame[trackname]
         track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
         fit_arr = []
@@ -121,9 +127,14 @@ def TrackStats(frame):
              fit_arr = [fit.pos.x,fit.pos.y,fit.pos.z,fit.dir.zenith,fit.dir.azimuth]
 
         for k in frame.keys():
-            
+            if ("SplineMPE" in k) and (trackname in k) and ("FitParams" in k):
+                tlogl = frame[k].logl
             if ("LLHCalcMPE" in k) and (trackname in k):
                 logl = frame[k].logl
+            if ("LLHCalcInitMPE" in k) and (trackname in k):
+                ilogl = frame[k].logl
+            if ("LLHCalcFinMPE" in k) and (trackname in k):
+                flogl = frame[k].logl    
             if ("prob_obs_0s" in k) and (trackname in k):
                 pm = frame[k].value
             if ("coincObsQsList" in k) and (trackname in k):
@@ -131,41 +142,51 @@ def TrackStats(frame):
                 for om, value in Ps:
                     if value:
                         qs.append(value[0])
+            if ("noncoincObsQsList" in k) and (trackname in k):
+                Ps = frame[k]
+                for om, value in Ps:
+                    if value:
+                        nqs.append(value[0])
+            
             if ("coincObsProbsList" in k) and (trackname in k):
                 Probs = frame[k]
                 for om, value in Probs:
                     if value:
                         prbs.append(value[0])
-
-        trk_arr.append([logl,pm,prbs,qs,track_arr,fit_arr])
+            if ("noncoincObsProbsList" in k) and (trackname in k):
+                Probs = frame[k]
+                for om, value in Probs:
+                    if value:
+                       nprbs.append(value[0])  
+        trk_arr.append([logl,pm,ilogl,tlogl,flogl,prbs,qs,nprbs,nqs,track_arr,fit_arr])          
         
-    for trackname in tracknames_c:
-        logl = 0
-        pm = 0
-        prbs = []
-        qs = []
+    # for trackname in tracknames_c:
+    #     logl = 0
+    #     pm = 0
+    #     prbs = []
+    #     qs = []
 
-        track = frame[trackname]
-        track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
+    #     track = frame[trackname]
+    #     track_arr = [track.pos.x,track.pos.y,track.pos.z,track.dir.zenith,track.dir.azimuth]
        
-        for k in frame.keys():
+    #     for k in frame.keys():
             
-            if ("LLHCalcMPE" in k) and (trackname in k):
-                logl = frame[k].logl
-            if ("prob_obs_0s" in k) and (trackname in k):
-                pm = frame[k].value
-            if ("coincObsQsList" in k) and (trackname in k):
-                Ps = frame[k]
-                for om, value in Ps:
-                    if value:
-                        qs.append(value[0])
-            if ("coincObsProbsList" in k) and (trackname in k):
-                Probs = frame[k]
-                for om, value in Probs:
-                    if value:
-                        prbs.append(value[0])
+    #         if ("LLHCalcMPE" in k) and (trackname in k):
+    #             logl = frame[k].logl
+    #         if ("prob_obs_0s" in k) and (trackname in k):
+    #             pm = frame[k].value
+    #         if ("coincObsQsList" in k) and (trackname in k):
+    #             Ps = frame[k]
+    #             for om, value in Ps:
+    #                 if value:
+    #                     qs.append(value[0])
+    #         if ("coincObsProbsList" in k) and (trackname in k):
+    #             Probs = frame[k]
+    #             for om, value in Probs:
+    #                 if value:
+    #                     prbs.append(value[0])
 
-        corr_arr.append([logl,pm,prbs,qs,track_arr])
+    #     corr_arr.append([logl,pm,prbs,qs,track_arr])
 
     vertex = 0
     energy = 0
@@ -214,7 +235,7 @@ import pickle
 TestCuts("Cors", file_list = file_list_c, year = "12")
 values_c = values[:]
 #name_f = "Genie_FullTest.pkl"
-name_f = "Corsika_TH_{0}.npy".format(p)
+name_f = "Corsika_TH1_{0}.npy".format(p)
 #np.save(name_f,values_n)
 output = open(name_f,"wb")
 pickle.dump(values_c, output, -1)
