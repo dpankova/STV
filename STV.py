@@ -1,4 +1,4 @@
-#bk#!/usr/bin/env python                                                                                
+#UH#bk#!/usr/bin/env python                                                                                
 from os import uname
 import argparse,os
 import numpy 
@@ -245,7 +245,7 @@ tray.AddModule("I3OMSelection<I3RecoPulseSeries>", 'selectDCVetoDOMs', #Select V
                )
 
 
-tray.AddModule(Cuts.CalculateVars, "CalcVars", Pulses = srt_pulses, PulsesFid = 'SRTPulsesFid', PulsesVeto = 'SRTPulsesVeto')
+tray.AddModule(Cuts.CalculateVars, "CalcVars", Pulses = srt_pulses, SRTPulsesFid = 'SRTPulsesFid', PulsesFid = 'PulsesFid', PulsesVeto = 'PulsesVeto')
 tray.AddModule(Cuts.PreCut, "PreCuts")
 tray.AddModule(Mods.CoGMedIC, "CoG", PulsesFid = 'SRTPulsesFid')
 #tray.AddModule(Weight,"Weight")

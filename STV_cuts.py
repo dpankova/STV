@@ -37,7 +37,7 @@ def Primary(frame,FitName):
     print "No Primary"
     return False
 
-def CalculateVars(frame, Pulses, PulsesFid, PulsesVeto):                               
+def CalculateVars(frame, Pulses, SRTPulsesFid, PulsesFid, PulsesVeto):                               
     geometry = frame["I3Geometry"]
     vertex_z = -999
     first_hit_t = 1e6
@@ -48,25 +48,36 @@ def CalculateVars(frame, Pulses, PulsesFid, PulsesVeto):
  
     if frame.Has(PulsesFid): 
         for omkey in frame[PulsesFid]:
-            h_fid += 1
-            for pulse in omkey[1]:                                                        
+            for pulse in omkey[1]:
                 c_fid += pulse.charge
-                                                                   
-        if (h_fid == 0) or (c_fid == 0):
+        if (c_fid == 0):
             print "CalclateVars: nothing in DeepCore"
             return False
     else:
         print "CalclateVars: no PulsesFid"
         return False
 
+    if frame.Has(SRTPulsesFid): 
+        for omkey in frame[SRTPulsesFid]:
+            h_fid += 1
+        if (h_fid == 0):
+            print "CalclateVars: nothing SRT in DeepCore"
+            return False
+    else:
+        print "CalclateVars: no SRTPulsesFid"
+        return False
+
+   #print c_fid
     if frame.Has(PulsesVeto):
-        for omkey in frame[PulsesVeto]:                                                     
-            for pulse in omkey[1]:                                                         
-                p_veto += pulse.charge  
+        for omkey in frame[PulsesVeto]:  
+           # print omkey
+            for pulse in omkey[1]:
+                p_veto += 1
+                c_veto += pulse.charge  
     else:
         print "CalclateVars: no PulsesVeto"
         return False
-
+    #print p_veto, c_veto
     if frame.Has(Pulses):            
         for omkey in frame[Pulses].apply(frame):
             for pulse in omkey[1]:
