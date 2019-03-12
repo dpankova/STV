@@ -1,25 +1,19 @@
+##D.Pankova 02/28/2019 IceCube
+##Functions used in Starting Track Veto for Low energies
+
 import numpy
 import pickle
-from icecube import phys_services, linefit, gulliver, gulliver_modules, spline_reco, StartingTrackVeto, TrackHits
+from icecube import phys_services, linefit, gulliver, gulliver_modules, spline_reco, StartingTrackVetoLE, TrackHits
 from I3Tray import I3Units
 from icecube import dataclasses, icetray
 from icecube import dataio, phys_services
 from I3Tray import *
 from operator import itemgetter
 import copy
-
-
-def RemoveFromFrame(frame,names):
-    for name in names:
-        if frame.Has(name):
-            del frame[name]
     
-    
-def DoSplineReco(tray,name,
-                 Pulses,Seed,
-                 Llh,LogName,
-                 Spline,AngStep,DistStep,
+def DoSplineReco(tray,name,Pulses,Seed,Llh,LogName,Spline,AngStep,DistStep,
                  If=lambda frame: True):
+    
     # setup minuit, parametrization, and bayesian priors for general use                            
     tray.AddService("I3GulliverMinuitFactory", "Minuit%s" % (Llh) + LogName,
                     Algorithm="SIMPLEX",
@@ -60,8 +54,8 @@ def DoSplineReco(tray,name,
                     )
 
 def EvalLLH(tray, name, Llh, Pulses, Spline, FitNames):
-    for fitname in FitNames:
-#        tray.AddModule(lambda frame: frame.Has(fitname),"CheckEval%s"%(Llh)+"_"+fitname)  
+    #Evaluate Likelihood given a track and pulses
+    for fitname in FitNames:  
         tray.AddService("I3SplineRecoLikelihoodFactory","LLHSplineEval%s"%(Llh)+"_"+fitname,
                         PhotonicsService=Spline,
                         Pulses=Pulses,
@@ -75,95 +69,71 @@ def EvalLLH(tray, name, Llh, Pulses, Spline, FitNames):
                         )
 
 
-def EvalLLHInit(tray, name, Llh, Spline, FitNames):
-    for fitname in FitNames:
-#        tray.AddModule(lambda frame: frame.Has(fitname),"CheckEval%s"%(Llh)+"_"+fitname)  
-        tray.AddService("I3SplineRecoLikelihoodFactory","LLHSplineEvalInit%s"%(Llh)+"_"+fitname,
-                        PhotonicsService=Spline,
-                        Pulses=fitname+"_Pulses",
-                        Likelihood=Llh,
-                        #NoiseRate=10*I3Units.hertz,          
-                        )
-
-        tray.AddModule("I3LogLikelihoodCalculator", "LLHCalcInit%s" % (Llh)+"_" + fitname,
-                        FitName=fitname,
-                        LogLikelihoodService="LLHSplineEvalInit%s" % (Llh)+"_"+fitname,
-                       )
-
-def EvalLLHFin(tray, name, Llh, Spline, FitNames):
-    for fitname in FitNames:
-#        tray.AddModule(lambda frame: frame.Has(fitname),"CheckEval%s"%(Llh)+"_"+fitname)  
-        tray.AddService("I3SplineRecoLikelihoodFactory","LLHSplineEvalFin%s"%(Llh)+"_"+fitname,
-                        PhotonicsService=Spline,
-                        Pulses=fitname[10:-4]+"_Pulses",
-                        Likelihood=Llh,
-                        #NoiseRate=10*I3Units.hertz,          
-                        )
-
-        tray.AddModule("I3LogLikelihoodCalculator", "LLHCalcFin%s" % (Llh)+"_" + fitname,
-                        FitName=fitname,
-                        LogLikelihoodService="LLHSplineEvalFin%s" % (Llh)+"_"+fitname,
-                        )
-                        
-
-
-
-def DoVetoFits(tray, name, Pulses,Llh,LogName,FitNames, Spline, AngStep, DistStep):
+def DoVetoFits(tray, name, Pulses,Llh, FitNames, Spline, AngStep, DistStep):
+    #Run a fitter on given seed tracks
     for fitname in FitNames:
         tray.AddSegment(DoSplineReco,"DoSplineReco"+fitname,
                         Pulses=Pulses,
                         Seed=fitname,
                         Llh=Llh,
-                        LogName = "_" + fitname +LogName,
+                        LogName = "_" + fitname,
                         Spline=Spline,
                         AngStep=AngStep,
                         DistStep=DistStep)
 
-def DoVetoPulseFits(tray, name, Llh,LogName,FitNames, Spline, AngStep, DistStep):
+def DoVetoPulseFits(tray, name, Llh, FitNames, Spline, AngStep, DistStep):
+    #Run a fitter on given seed tracks and corrseponsing pulse series
     for fitname in FitNames:
         tray.AddSegment(DoSplineReco,"DoSplineReco"+fitname,
                         Pulses=fitname+"_Pulses",
                         Seed=fitname,
                         Llh=Llh,
-                        LogName = "_" + fitname +LogName,
+                        LogName = "_" + fitname,
                         Spline=Spline,
                         AngStep=AngStep,
                         DistStep=DistStep)
 
 
 def SelectLLH(frame, TrackNames, N):
+    #Select most promising Tracks (the rest will be deleted)
+    #N with minimum LLH and N with maximum number of compatible Hits
     lists = []
     fitnames = []
     for fitname in TrackNames:
         if frame.Has(fitname):
             logl = 10**10
             p = 0
+            q = 0
             for k in frame.keys():
                 if ("LLHCalc" in k) and (fitname in k):
                     if not numpy.isnan(frame[k].logl):
                         logl = frame[k].logl
                     
-                if ("coincObsQsList" in k) and (fitname in k):
+                if ("TrackHits" in k) and ("coincObsQsList" in k) and (fitname in k):
                     Ps = frame[k]
-                    for om, value in Ps:
-                        if value:
+                    for om, charges in Ps:
+                        if not len(charges) == 0:
                             p = p + 1
+                            q = q + sum(charges)
+            lists.append([logl,p,q,fitname])
 
-            lists.append([logl,p,fitname])
-    #print lists        
     ps = sorted(lists, key=itemgetter(1), reverse=True)
+    qs = sorted(lists, key=itemgetter(2), reverse=True)
     ps = ps[:N] 
     logls = sorted(lists, key=itemgetter(0))
     logls = logls[:N]
-    #print "p", ps 
-    #print "l", logls
+    frame["TrackHits_MaxCompHits"]=dataclasses.I3Double(ps[0][1])
+    frame["TrackHits_MaxCompCharge"]=dataclasses.I3Double(qs[0][2])
+    print "TrackHits_MaxCompHits = {0:.3f}".format(ps[0][1])
+    print "TrackHits_MaxCompCharge = {0:.3f}".format(qs[0][2])
+    
     for it in logls:
-        fitnames.append(it[2])
+        fitnames.append(it[3])
 
     for it in ps:
-        if not (it[2] in fitnames):
-            fitnames.append(it[2])
-    #print "f", fitnames        
+        if not (it[3] in fitnames):
+            fitnames.append(it[3])
+            
     for fitname in TrackNames:
         if not (fitname in fitnames):
             for k in frame.keys():
@@ -173,8 +143,8 @@ def SelectLLH(frame, TrackNames, N):
             
 
 def NSegmentVector(frame,FitName,N=1):
+    #Make Segments out of tracks, Required for STV (made by K.Jero)
     if frame.Has(FitName):
-
         if N%2==0:
             print "n=",N,"is even! Change this!"
             sys.exit(910)
@@ -182,14 +152,12 @@ def NSegmentVector(frame,FitName,N=1):
             basep=copy.deepcopy(frame[FitName])
         except:
             return True
-
-    #shift to closest approach to 0,0,0    
+        basep.shape = basep.shape.InfiniteTrack
+        ##shift to closest approach to 0,0,0    
         origin_cap = phys_services.I3Calculator.closest_approach_position(
             basep,dataclasses.I3Position(0,0,0))
-    
-        basep_shift_d=numpy.sign(origin_cap.z - basep.pos.z) *\
-            numpy.sign(basep.dir.z) *\
-            (origin_cap-basep.pos).magnitude
+        basep_shift_d=numpy.sign(origin_cap.z - basep.pos.z)*numpy.sign(
+            basep.dir.z)*(origin_cap-basep.pos).magnitude
         basep_shift_pos=basep.pos+(basep.dir*basep_shift_d)
         basep_shift_t=basep_shift_d/basep.speed
         basep.pos=basep_shift_pos
@@ -211,38 +179,23 @@ def NSegmentVector(frame,FitName,N=1):
                 particle.length=segment_length
             segments.append(particle)
 
-        RemoveFromFrame(frame,[FitName+"_"+str(N)+"_segments"])
+        del frame[FitName+"_"+str(N)+"_segments"]
         frame[FitName+"_"+str(N)+"_segments"]=dataclasses.I3VectorI3Particle(segments)
-    #    print "Put", FitName+"_"+str(N)+"_segments", "in the frame"                             
+        #print "Put", FitName+"_"+str(N)+"_segments", "in the frame"                             
         del segments
 
-def PrintPm(frame, FitNames):
-    pm = 0
-    rlogl = 0
+def DoSTV(tray, name, Pulses, FitNames, NSeg, Spline, MinCADist, DistType):
+    #Run STV
     for fitname in FitNames:
-        if frame.Has(fitname):
-            for k in frame.keys():
-                if ("prob_obs_0s" in k) and (fitname in k):
-                    pm = frame[k].value
-                if ("FitParams" in k) and (fitname in k):
-                    rlogl = frame[k].rlogl
-            print "{0} Rlogl = {1:.3e} Pm = {2:.3e}".format(fitname, rlogl, pm)
-            print "Getting out", fitname, frame[fitname]
-
-
-def DoSTV(tray, name, Pulses, FitNames, NSeg, PmCut, Spline, MinCADist, DistType):
-    for fitname in FitNames:
-        
         #Create vectors for STV                                                             
         tray.Add(NSegmentVector,"NSegmentVector_"+fitname+"_"+str(NSeg),
                  FitName=fitname,
                  N=NSeg)
-        
-        #STV                                                                                
-        tray.Add("StartingTrackVeto","STV_"+fitname+"_"+str(NSeg),
+
+        tray.Add("StartingTrackVetoLE","STV_"+fitname+"_"+str(NSeg),
                  Pulses=Pulses,
                  Photonics_Service=Spline,
-                 Miss_Prob_Thresh=PmCut,
+                 Miss_Prob_Thresh=1.1, #No cuttting on Pm here
                  Fit=fitname,
                  Particle_Segments=fitname+"_"+str(NSeg)+"_segments",
                  Distance_Along_Track_Type=DistType,
@@ -251,43 +204,25 @@ def DoSTV(tray, name, Pulses, FitNames, NSeg, PmCut, Spline, MinCADist, DistType
                  Norm = False,
                  Min_CAD_Dist=MinCADist)
 
-def PrintCoincQP(frame, Pulses, FitName, NSeg):
-    ps = 0
-    qs = 0
-    name_p = "TrackHits_"+FitName+"_"+Pulses+"_"+"coincObsPsList_"+str(NSeg)
-    name_q = "TrackHits_"+FitName+"_"+Pulses+"_"+"coincObsQsList_"+str(NSeg)
-    if frame.Has(name_p):
-        for k in frame.keys():
-            if (name_p in k):
-                ps = sum(frame[k])
-            if (name_q in k):
-                qs = sum(frame[k])    
-        print "{0} Qs = {1:.3e} Ps = {2:.3e}".format(FitName, qs, ps)
-
-
-def DoTrackHits(tray, name, Pulses, FitNames, NSeg, Percent, Spline, MinCADist):
+def DoTrackHits(tray, name, Pulses, FitNames, NSeg, Spline, MinCADist):
+    #Run TrackHits Module, looking for compatible Hits
     for fitname in FitNames:
-        #Create vectors for STV  
-        #print "NSegmentVectorTH_",fitname,str(NSeg)
         tray.Add(NSegmentVector,"NSegmentVectorTH_"+fitname+"_"+str(NSeg),
                  FitName=fitname,
                  N=NSeg)        
-        #STV                                                                                
+        
         tray.Add("TrackHits","TH_"+fitname+"_"+str(NSeg),
                  Pulses=Pulses,
                  Photonics_Service=Spline,
-                 Percent=Percent,
-                 Fit=fitname,
+                 Percent=0.01, #Same as inside STV for LE, no point 
+                 Fit=fitname,  #of having a different one here
                  Particle_Segments=fitname+"_"+str(NSeg)+"_segments",
                  Min_CAD_Dist=MinCADist)
         
-        # tray.Add(PrintCoincQP,"THPrint_"+fitname+"_"+str(NSeg),
-        #          Pulses = Pulses,
-        #          FitName=fitname,
-        #          NSeg = NSeg)
       
 
-def MakeVetoFits(frame, CoGFit, SafeFit, PulsesVeto):
+def MakeVetoTracks(frame, CoGFit, SafeFit, PulsesVeto, CoGPosName, CoGTimeName):
+    #connect one hit in the Veto to a Vertex, CoG fit vertex or CoG in DeepCore
     geo = frame["I3Geometry"].omgeo
     if frame.Has(PulsesVeto):
         veto_hits = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesVeto)
@@ -295,57 +230,54 @@ def MakeVetoFits(frame, CoGFit, SafeFit, PulsesVeto):
             print "No Hits in Veto!"
             return False
 
+        #Use CoGFit Vertex, if CoGfit exists
         if frame.Has(CoGFit):
-            fit = copy.deepcopy(frame[CoGFit])                                                
+            fit = copy.deepcopy(frame[CoGFit])                                         
             if fit.fit_status == dataclasses.I3Particle.OK:
                 num = 0
                 for om in veto_hits:
-                    newfit = copy.deepcopy(frame[CoGFit])                                             
+                    newfit = copy.deepcopy(frame[CoGFit])                              
                     newfit.dir=dataclasses.I3Direction(newfit.pos-geo[om[0]].position)
-#                    name = 'VetoFit_{0:02d}{1:02d}'.format(om[0].string,om[0].om)
                     name = 'VetoFit_{0:05d}'.format(num)
                     frame[name]=newfit
                     num = num +1
                 return True
 
-        if frame.Has("CoGTime") and frame.Has(SafeFit):
-            fit = copy.deepcopy(frame[SafeFit])                                                
+        #If not take CoG as a vertex    
+        if frame.Has(CoGTimeName) and frame.Has(SafeFit):
+            fit = copy.deepcopy(frame[SafeFit])                                            
             if fit.fit_status == dataclasses.I3Particle.OK:
                 num = 0
                 for om in veto_hits:
-                    newfit = copy.deepcopy(frame[SafeFit])                                           
-                    newfit.pos=frame["CoGPos"]
-                    newfit.time=frame["CoGTime"].value
+                    newfit = copy.deepcopy(frame[SafeFit])                                  
+                    newfit.pos=frame[CoGPosName]
+                    newfit.time=frame[CoGTimeName].value
                     newfit.dir=dataclasses.I3Direction(newfit.pos-geo[om[0]].position)
-                   # name = 'VetoFit_{0:02d}{1:02d}'.format(om[0].string,om[0].om)
                     name = 'VetoFit_{0:05d}'.format(num)
                     frame[name]=newfit
                     num = num +1
                 return True
 
-#    print "Can't make VetoFits"
+    print "Can't make VetoFits"
     return False
 
     
 def MakeVetoPulses(frame, PulsesVeto, PulsesFid):
-    #Make pulse series = fid pulses +one hit in veto
+    #Make pulse series consisting of fid pulses and one hit in veto
     cor = set() #to make sure there are no repeats
     geo = frame["I3Geometry"].omgeo
-    
     if not frame.Has(PulsesFid) or not frame.Has(PulsesVeto):        
         print "Can't make VetoPulses"
         return False
     
     veto_hits = copy.deepcopy(dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesVeto))
-
     if len(veto_hits) == 0:
         print "MakeVetoPulses: No Hits in Veto!"
         return False
-        #look for TrackHits output and read out compatiable DOMS
-#    print veto_hits
+    
+    #look for TrackHits output and read out compatiable DOMS
     for k in frame.keys():
         if ("TrackHits_VetoFit" in k) and ("coincObsQsList" in k):
-
             trk = k.split("_")[2]
             if trk in cor:
                 continue
@@ -353,22 +285,20 @@ def MakeVetoPulses(frame, PulsesVeto, PulsesFid):
             Qs = copy.deepcopy(frame[k])
             cor.update([trk])
             veto_OMs = []
-            
-            for om, q in Qs: #Find non zero hits
+
+            #Find non zero hits
+            for om, q in Qs: 
                 if sum(q) != 0:
                     veto_OMs.append(om)
-                    #print om, q
-
 
             total_hits = copy.deepcopy(dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesFid))
-#            print "total", total_hits
-
             if len(total_hits) == 0:
                 print "MakeVetoPulses: No Hits in DC!"
                 return False
 
+            #Go through all compatiable hits
             if veto_OMs:
-                for om in veto_OMs: #Go through all compatiable hits
+                for om in veto_OMs: 
                     if om in total_hits:
                         print "MakeVetoPulses: Veto and Fid pulses not separated!"
                         return False
@@ -379,44 +309,119 @@ def MakeVetoPulses(frame, PulsesVeto, PulsesFid):
             frame[name]=total_hits
                         
     return True
-    
 
+#Calculate and book Pmiss
+def Pmiss(frame, Pulses, TrackNames):
+    LLHs = []
+    Pms = []
+    Qs = []
+    for fitname in TrackNames:
+        for k in frame.keys():
+            if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k) and ("coincObsQsList" in k):
+                lists = frame[k]
+                Qsum = []
+                for om, val in lists: #Find non zero hits
+                    Qsum.append(sum(val))
+                Qs.append(sum(Qsum))
+            if ("LLHCalc" in k) and (fitname in k):   
+                LLHs.append(frame[k].logl)
+    
+            if ("prob_obs_0s" in k) and (fitname in k):
+                Pms.append(frame[k].value)
+    
+    zipped = zip(LLHs,Qs,Pms)
+    maxQ = numpy.max(Qs)
+    maxQ_LLH_list = [i[0] for i in zipped if i[1] == maxQ]
+    maxQ_minLLH = numpy.min(maxQ_LLH_list)
+    pm_best = [i[2] for i in zipped if i[1] == maxQ and i[0] == maxQ_minLLH]
+    pm_max = numpy.max(Pms)
+    pm_min = numpy.min(Pms)
+    pm_mean = numpy.mean(Pms)
+
+    frame["Pm_Max_STV"] = dataclasses.I3Double(pm_max)
+    frame["Pm_Min_STV"] = dataclasses.I3Double(pm_min)
+    frame["Pm_Mean_STV"] = dataclasses.I3Double(pm_mean)
+    frame["Pm_Best_STV"] = dataclasses.I3Double(pm_best[0])
+    print "Pm_Max = {0:.3E}, Pm_Min = {1:.3E}".format(pm_max, pm_min)
+    print "Pm_Mean = {0:.3E}, Pm_Best = {1:.3E}".format(pm_mean, pm_best[0])
+    return True
+
+#Find Center of Gravity of the Deep Core pulses (approximate vertex)
+def CoGMedIC(frame, PulsesFid, CoGPosName, CoGTimeName):                            
+    geometry = frame["I3Geometry"]                                          
+    if frame.Has(PulsesFid):                                                      
+        pulsesf = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesFid)    
+
+        if  len(pulsesf) == 0:     
+            print "CoGMedIC: Pulses are empty"
+            return False                                                               
+
+        cog_time = []                                                      
+        cog_x = []                                                    
+        cog_y = []                     
+        cog_z = []                                                         
+
+        for om, pulseSeries in pulsesf:                                  
+            for pulse in pulseSeries:                                            
+                cog_x.append(geometry.omgeo[om].position.x)                        
+                cog_y.append(geometry.omgeo[om].position.y)                             
+                cog_z.append(geometry.omgeo[om].position.z)                         
+
+        cog_pos  = dataclasses.I3Position(numpy.median(cog_x), numpy.median(cog_y), numpy.median(cog_z))       
+        cog_time = []                                                                 
+        distance = 0                                                     
+         
+        for om, pulseSeries in pulsesf:                                           
+            distance = (cog_pos - geometry.omgeo[om].position).magnitude                
+            for pulse in pulseSeries:                                         
+                cor_time = abs(pulse.time - distance/dataclasses.I3Constants.c_ice)      
+                cog_time.append(cor_time)
+
+        cog_t = numpy.median(cog_time)                                             
+        frame[CoGTimeName] = dataclasses.I3Double(cog_t)                                    
+        frame[CoGPosName] = dataclasses.I3Position(cog_pos)                               
+
+    else:
+        print "CoGMedIC: No Fid Pulses"
+        return False          
+
+#Functions below are not used in the current version od STV for LE
+#But may still be useful at some point
 def Intersection(cog, mid, p1, p2):
+    #Find if two lines intesect for making corridor tracks
+    #First Line: Connect CoG of Event in Deep Core and a position(x,y) 
+    #in the middle of the outer edge of the corridor (outer edge of IC)
+    #Second Line: Take positions(x,y) of two strings at the 
+    #inner edge of the coridor near Deep Core
 
     tr = mid-cog
     cor = p2-p1
     denom = tr.x*cor.y-cor.x*tr.y
-    
     #never colliner or parallel
     #if denom == 0 : return None # collinear
-
     denom_is_positive = denom > 0
     top = cog-p1
     s_numer = tr.x*top.y-tr.y*top.x
-
     if (s_numer < 0) == denom_is_positive:
         return False # no collision
-
     t_numer = cor.x*top.y-cor.y*top.x
-
     if (t_numer < 0) == denom_is_positive:
         return False # no collision
-
     if (s_numer > denom) == denom_is_positive or (t_numer > denom) == denom_is_positive:
         return False # no collision
-
-    # collision detected
+    #If collision is detected
+    #Find the intersection point and make sure it's not too close
+    #To the edge of the Second Line, i.e. a muon can pass through
+    #the corridor without getting too close to any strings
     t = t_numer/denom
-
     intsec = dataclasses.I3Position(cog.x+(t*tr.x), cog.y+(t*tr.y),0)
     d1 = (intsec-p1).magnitude
     d2 = (intsec-p2).magnitude
-    
     if (d1 < 30) or (d2 < 30):
         return False
     return True
 
-
+#Put tracks through the "active" corridors
 def MakeCorridorFits(frame, CoGFit, SafeFit):
     input_file = open('Corridors.pkl', 'rb')
     data = pickle.load(input_file)
@@ -462,100 +467,7 @@ def MakeCorridorFits(frame, CoGFit, SafeFit):
     print "MakeCorridorFits: No good fits"
     return False
 
-def CoGMedIC(frame, PulsesFid):                                                    
-    geometry = frame["I3Geometry"]                                          
-    if frame.Has(PulsesFid):                                                      
-        pulsesf = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,PulsesFid)    
 
-        if  len(pulsesf) == 0:     
-            print "CoGMedIC: Pulses are empty"
-            return False                                                               
-
-        cog_time = []                                                      
-        cog_x = []                                                    
-        cog_y = []                     
-        cog_z = []                                                         
-
-        for om, pulseSeries in pulsesf:                                  
-            for pulse in pulseSeries:                                            
-                cog_x.append(geometry.omgeo[om].position.x)                        
-                cog_y.append(geometry.omgeo[om].position.y)                             
-                cog_z.append(geometry.omgeo[om].position.z)                         
-
-        cog_pos  = dataclasses.I3Position(numpy.median(cog_x), numpy.median(cog_y), numpy.median(cog_z))       
-        cog_time = []                                                                 
-        distance = 0                                                     
-         
-        for om, pulseSeries in pulsesf:                                           
-            distance = (cog_pos - geometry.omgeo[om].position).magnitude                
-            for pulse in pulseSeries:                                         
-                cor_time = abs(pulse.time - distance/dataclasses.I3Constants.c_ice)      
-                cog_time.append(cor_time)
-
-        cog_t = numpy.median(cog_time)                                             
-        frame["CoGTime"] = dataclasses.I3Double(cog_t)                                     
-        frame["CoGPos"] = dataclasses.I3Position(cog_pos)                               
-    else:
-        print "CoGMedIC: No Fid Pulses"
-        return False          
-
-def CheckTH(frame, NHitsCut):
-    cor = set()
-    Qs = [] #Charge
-    Ps = [] #Pulses
-    Hs = [] #Hits
-    Tot = [] #Total #DOMs around the track
-    MaxNHits = 0 #Max number of hits in one track, 
-                 #the variable to cut on
-
-    for k in frame.keys():
-        qs = []
-        wqs = []
-        lqs = []
-        hs = 0
-        #Get TH data from the frame
-        if ("TrackHits_VetoFit" in k) and ("coincObsQsList" in k):
-            trk_n = k.split("_")[2]
-            if not trk_n in cor:
-                namep = "TrackHits_VetoFit_{0}_SplitInIcePulses_coincObsProbsList_1".format(trk_n)
-                nameq = "TrackHits_VetoFit_{0}_SplitInIcePulses_coincObsQsList_1".format(trk_n)
-                probs =  frame[namep]
-                chs =  frame[nameq]
-                cor.update([trk_n])
-                tot_doms = len(chs)
-
-                #Summ charge pulses for each om, if nonzero
-                for om, q in cks:
-                    if q:
-                        qs.append(sum(q))
-                        hs = hs + 1
-                        lqs.append(len(q))
-
-                #Sum charge for each track    
-                if qs:
-                    Qs.append(sum(qs))
-                    Ps.append(sum(lqs))
-                    Hs.append(hs)
-                    Tot.append(tot_doms)
-
-    if not Hs:
-        MaxNHits = 0
-    else:
-        Hs.sort(reverse=True)
-        MaxNHits = Hs[0]
-
-    
         
             
-def RLogLCut(frame,fits_to_try=[]):
-    for f in fits_to_try:
-        if frame.Has(f):
-            fps=frame[f+"FitParams"]
-            rlogl=fps.rlogl
-            print f,rlogl
-            if numpy.isnan(rlogl):
-                return False
-        else:
-            return False
-    return True
     

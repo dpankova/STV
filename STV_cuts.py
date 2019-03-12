@@ -1,23 +1,14 @@
-#!/usr/bin/python                                                                                   
+##D.Pankova 02/28/2019
+##If you are running on L2, you might want to use precuts to remove the obvious muons first
+
 from __future__ import division
 import icecube
 from icecube import icetray, dataclasses, dataio, phys_services, STTools
 from I3Tray import *
 import copy
 
-def Primary(frame,FitName):
-
-    # if frame.Has("I3MCTree"):
-    #     I3MCT=frame["I3MCTree"]
-    #     for prim in I3MCT.primaries:
-    #         if (abs(prim.pdg_encoding)==12) or (abs(prim.pdg_encoding)==14) or (abs(prim.pdg_encoding)==16):
-    #             fit = copy.deepcopy(frame[FitName])
-    #             fit.pos = prim.pos
-    #             fit.dir = prim.dir                
-    #             fit.time = prim.time
-    #             frame['Primary'] = fit
-    #             frame['PrimaryOrig'] = fit
-    #             return True
+#Save truth information
+def Primary(frame,FitName,GenieOrCorsika="Genie"):
     if frame.Has(FitName):
         fit = copy.deepcopy(frame[FitName])
         if not fit.fit_status == dataclasses.I3Particle.OK:
@@ -25,19 +16,26 @@ def Primary(frame,FitName):
             return False
 
         if frame.Has("I3MCTree"):
-            prim = dataclasses.get_most_energetic_neutrino(frame['I3MCTree'])
+            if GenieOrCorsika=="Genie":
+                prim = dataclasses.get_most_energetic_neutrino(frame['I3MCTree'])
+            elif GenieOrCorsika=="Corsika":    
+                prim = dataclasses.get_most_energetic_muon(frame['I3MCTree'])
+            else:
+                print "Specify if neutrino or muons"
+                return False
             fit.pos = prim.pos
             fit.dir = prim.dir                
             fit.time = prim.time
             frame['Primary'] = fit
-            frame['PrimaryOrig'] = fit
             return True
-  
 
     print "No Primary"
     return False
 
-def CalculateVars(frame, Pulses, SRTPulsesFid, PulsesFid, PulsesVeto):                               
+#Get 4 variables, which I found have the strongest effect on background removal
+#Number of STR cleaned pulses in DeepCore, Number of pulses in Veto
+#Veto to Deep core charge ratio and Vertex Z position estimation
+def CalculateVars(frame, SRTPulses, SRTPulsesFid, SRTPulsesVeto, PulsesVeto):                               
     geometry = frame["I3Geometry"]
     vertex_z = -999
     first_hit_t = 1e6
@@ -46,40 +44,36 @@ def CalculateVars(frame, Pulses, SRTPulsesFid, PulsesFid, PulsesVeto):
     c_fid = 0                                                                          
     c_veto = 0                                                                              
  
-    if frame.Has(PulsesFid): 
-        for omkey in frame[PulsesFid]:
-            for pulse in omkey[1]:
-                c_fid += pulse.charge
-        if (c_fid == 0):
-            print "CalclateVars: nothing in DeepCore"
-            return False
-    else:
-        print "CalclateVars: no PulsesFid"
-        return False
-
     if frame.Has(SRTPulsesFid): 
         for omkey in frame[SRTPulsesFid]:
             h_fid += 1
-        if (h_fid == 0):
+            for pulse in omkey[1]:
+                c_fid += pulse.charge
+        if (h_fid == 0) or (c_fid == 0):           
             print "CalclateVars: nothing SRT in DeepCore"
             return False
     else:
         print "CalclateVars: no SRTPulsesFid"
         return False
 
-   #print c_fid
+    if frame.Has(SRTPulsesVeto): 
+        for omkey in frame[SRTPulsesVeto]:
+            for pulse in omkey[1]:
+                c_veto += pulse.charge   
+    else:
+        print "CalclateVars: no SRTPulsesVeto"
+        return False
+
     if frame.Has(PulsesVeto):
         for omkey in frame[PulsesVeto]:  
-           # print omkey
             for pulse in omkey[1]:
                 p_veto += 1
-                c_veto += pulse.charge  
     else:
         print "CalclateVars: no PulsesVeto"
         return False
-    #print p_veto, c_veto
-    if frame.Has(Pulses):            
-        for omkey in frame[Pulses].apply(frame):
+
+    if frame.Has(SRTPulses):            
+        for omkey in frame[SRTPulses].apply(frame):
             for pulse in omkey[1]:
                 if pulse.time < first_hit_t:
                     first_hit_t = pulse.time
@@ -95,7 +89,8 @@ def CalculateVars(frame, Pulses, SRTPulsesFid, PulsesFid, PulsesVeto):
     frame["Vars_Charge_Ratio"] = dataclasses.I3Double(c_ratio)                      
     frame["Vars_Vertex_Z"] = dataclasses.I3Double(vertex_z)
     print "Vars:", h_fid, p_veto, c_ratio, vertex_z
-        
+
+    #Functions below take into account correlations between some variables
     func_1 = p_veto - (0.3*h_fid**2 + 40)/(-h_fid) - 50
     frame["Vars_Func_1"] = dataclasses.I3Double(func_1)
     func_2 = c_ratio + 0.0007*(func_1 + 34)*(func_1 - 6)
@@ -103,7 +98,7 @@ def CalculateVars(frame, Pulses, SRTPulsesFid, PulsesFid, PulsesVeto):
     print "Func: ", func_1, func_2
 
     return True
-
+#Do the cut
 def PreCut(frame):
     if frame.Has("Vars_Func_1") and frame.Has("Vars_Charge_Ratio") and frame.Has("Vars_Vertex_Z"):
         func_1 = frame["Vars_Func_1"].value
@@ -117,14 +112,19 @@ def PreCut(frame):
     else:
         print "Didn't have something in PreCut"
         return False
-# def PreCut(frame):
-#     if frame.Has("Vars_Func_1") and frame.Has("Vars_Func_2") and frame.Has("Vars_Vertex_Z"):
-#         func_1 = frame["Vars_Func_1"].value
-#         func_2 = frame["Vars_Func_2"].value
-#         vz = frame["Vars_Vertex_Z"].value
-#         if (func_1 < 0) and (func_2 < 0) and (vz < -190):
-#             return True
-#         else:
-#             print "Didn't pass PreCut"
-#             return False
 
+#Remove events with a lot of compatible hits
+def THCut(frame, Pulses, FitNames, Threshold):
+    for fitname in FitNames:
+        for k in frame.keys():
+            if ("TrackHits_{0}_{1}".format(fitname,Pulses) in k) and ("coincObsQsList" in k):
+                lists = frame[k]
+                Qsum = []
+                for om, val in lists: #Find non zero hits
+                    Qsum.append(sum(val))
+                SQ = sum(Qsum)     
+                if SQ> Threshold:
+                    print "Didn't Pass TrackHits Cut"
+                    print "Q ={0}, Threshold = {1}".format(SQ,Threshold)
+                    return False
+    return True           
